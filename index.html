@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TrancheFi</title>
+<title>TrancheFi — Structured Digital Credit</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="style.css">
@@ -14,18 +14,18 @@
 <div class="nav-tabs">
 <button class="nav-tab active" data-page="home">Home</button>
 <button class="nav-tab" data-page="dashboard">Dashboard</button>
-<button class="nav-tab" onclick="window.open('https://docs.tranchefi.xyz','_blank')">Docs</button>
 </div>
 <div class="nav-right">
 <a href="https://x.com/TrancheFi" target="_blank" class="nav-link">X</a>
 <button class="nav-btn" onclick="window.open('https://x.com/TrancheFi','_blank')">Follow</button>
 </div>
 </nav>
+
 <div id="page-home" class="page active">
 <div class="hero">
 <div class="hero-badge"><span class="dot"></span>Built on Saturn Protocol</div>
 <h1>Choose Your<br><span class="grad">Yield.</span></h1>
-<p>Structured digital credit powered by Strategy's STRC. One capital pool. Two risk profiles. The same principles behind $1 trillion in CLOs &mdash; on transparent, permissionless infrastructure.</p>
+<p>Structured digital credit powered by Strategy's STRC. One capital pool. Two risk profiles. The same principles behind $1 trillion in CLOs — on transparent, permissionless infrastructure.</p>
 </div>
 <div class="tranche-cards">
 <div class="t-card senior">
@@ -61,28 +61,29 @@
 </div></div>
 <div class="cta-section">
 <h2>The vault is in development.</h2>
-<p>Track paper portfolio performance on the Dashboard. Real STRC data, real math, updated weekly.</p>
+<p>Track live paper portfolio performance on the Dashboard. Real STRC market data, real vault math, auto-updated.</p>
 <div class="cta-buttons">
 <button class="btn-primary" onclick="switchPage('dashboard')">View Dashboard &rarr;</button>
 <a href="https://x.com/TrancheFi" target="_blank"><button class="btn-outline">Follow on X</button></a>
 </div></div>
 </div>
+
 <div id="page-dashboard" class="page">
 <div class="dash">
 <div class="dash-header">
-<div><div class="dash-title">Paper Portfolio</div><div class="dash-subtitle">Live vault simulation on real STRC data. Updated weekly.</div></div>
+<div><div class="dash-title">Paper Portfolio</div><div class="dash-subtitle" id="dash-subtitle">Loading live data...</div></div>
 <div class="dash-live"><span class="dot-live"></span><span id="dash-epoch">Week 0</span></div>
 </div>
 <div class="stats-bar">
-<div class="stat-card"><div class="sc-label">STRC Price</div><div class="sc-value" id="sc-strc">--</div><div class="sc-sub">Par: $100</div></div>
-<div class="stat-card"><div class="sc-label">30-Day Vol</div><div class="sc-value" id="sc-vol">--</div><div class="sc-sub" id="sc-vol-regime">--</div></div>
-<div class="stat-card"><div class="sc-label">Leverage</div><div class="sc-value" id="sc-lev">--</div><div class="sc-sub">Dynamic</div></div>
-<div class="stat-card"><div class="sc-label">Pool Yield</div><div class="sc-value green" id="sc-pool">--</div><div class="sc-sub">At leverage</div></div>
-<div class="stat-card"><div class="sc-label">Health Factor</div><div class="sc-value green" id="sc-hf">--</div><div class="sc-sub" id="sc-hf-status">--</div></div>
+<div class="stat-card"><div class="sc-label">STRC Price</div><div class="sc-value" id="sc-strc">...</div><div class="sc-sub">Par: $100</div></div>
+<div class="stat-card"><div class="sc-label">30-Day Vol</div><div class="sc-value" id="sc-vol">...</div><div class="sc-sub" id="sc-vol-regime">--</div></div>
+<div class="stat-card"><div class="sc-label">Leverage</div><div class="sc-value" id="sc-lev">...</div><div class="sc-sub">Dynamic</div></div>
+<div class="stat-card"><div class="sc-label">Pool Yield</div><div class="sc-value green" id="sc-pool">...</div><div class="sc-sub">At leverage</div></div>
+<div class="stat-card"><div class="sc-label">Health Factor</div><div class="sc-value green" id="sc-hf">...</div><div class="sc-sub" id="sc-hf-status">--</div></div>
 </div>
 <div class="tranche-perf">
 <div class="perf-card senior-card">
-<div class="pc-header"><div><div class="pc-label">Senior Tranche</div><div class="pc-yield-sub">sdcSENIOR</div></div><div class="pc-yield" id="sr-cumul" style="color:var(--senior)">+0.000%</div></div>
+<div class="pc-header"><div><div class="pc-label">Senior Tranche</div><div class="pc-yield-sub">sdcSENIOR</div></div><div class="pc-yield" id="sr-cumul" style="color:#4a8eff">+0.000%</div></div>
 <div class="pc-grid">
 <div class="pc-metric"><div class="pm-label">This Week</div><div class="pm-value" id="sr-week">--</div></div>
 <div class="pc-metric"><div class="pm-label">Annualized</div><div class="pm-value" id="sr-ann">--</div></div>
@@ -92,7 +93,7 @@
 <div class="pc-metric"><div class="pm-label">Sharpe</div><div class="pm-value" id="sr-sharpe">--</div></div>
 </div></div>
 <div class="perf-card junior-card">
-<div class="pc-header"><div><div class="pc-label">Junior Tranche</div><div class="pc-yield-sub">sdcJUNIOR</div></div><div class="pc-yield" id="jr-cumul" style="color:var(--junior)">+0.000%</div></div>
+<div class="pc-header"><div><div class="pc-label">Junior Tranche</div><div class="pc-yield-sub">sdcJUNIOR</div></div><div class="pc-yield" id="jr-cumul" style="color:#d4a843">+0.000%</div></div>
 <div class="pc-grid">
 <div class="pc-metric"><div class="pm-label">This Week</div><div class="pm-value" id="jr-week">--</div></div>
 <div class="pc-metric"><div class="pm-label">Annualized</div><div class="pm-value" id="jr-ann">--</div></div>
@@ -104,7 +105,7 @@
 </div>
 <div class="chart-container">
 <div class="chart-header"><div class="chart-title">Cumulative Performance</div>
-<div class="chart-legend"><span><span class="leg-dot" style="background:var(--senior)"></span>Senior</span><span><span class="leg-dot" style="background:var(--junior)"></span>Junior</span><span><span class="leg-dot" style="background:var(--text4)"></span>sUSDat 1x</span></div></div>
+<div class="chart-legend"><span><span class="leg-dot" style="background:#4a8eff"></span>Senior</span><span><span class="leg-dot" style="background:#d4a843"></span>Junior</span><span><span class="leg-dot" style="background:#3d4362"></span>sUSDat 1x</span></div></div>
 <div class="chart-wrap"><canvas id="perfChart"></canvas></div>
 </div>
 <div class="history-section">
@@ -113,8 +114,9 @@
 <thead><tr><th style="text-align:left">Week</th><th>STRC</th><th>Vol</th><th>Lev</th><th>Pool</th><th>Senior</th><th>Junior</th><th>HF</th></tr></thead>
 <tbody id="history-body"></tbody>
 </table></div>
-<div class="disclaimer">Paper portfolio only. No real capital deployed. Not financial advice.</div>
+<div class="disclaimer">Paper portfolio only. No real capital deployed. Returns computed from live STRC market data using the vault's actual math (separated interest/principal waterfall, dynamic leverage, 70/30 split). Past simulated performance does not guarantee future results. Not financial advice.</div>
 </div></div>
-<footer><div class="foot-left">2026 TrancheFi</div><div class="foot-links"><a href="https://x.com/TrancheFi" target="_blank">X</a><a href="https://docs.tranchefi.xyz" target="_blank">Docs</a><a href="#">Whitepaper</a></div></footer>
+
+<footer><div class="foot-left">2026 TrancheFi</div><div class="foot-links"><a href="https://x.com/TrancheFi" target="_blank">X</a><a href="#">Whitepaper</a></div></footer>
 <script src="app.js"></script>
 </body></html>

@@ -47,11 +47,14 @@ function waterfall(sr, jr, lev, strcRet) {
   };
 }
 
-function simEpoch(prev, btcPrice) {
+function simEpoch(prev, btcPrice, realStrc) {
   const btcRet = (btcPrice - prev.btc) / prev.btc;
-  const pass = 0.30 + Math.random() * 0.10;
-  const parPull = (100 - prev.strc) * 0.03;
-  const strc = Math.max(60, Math.min(140, prev.strc * (1 + btcRet * pass) + parPull));
+  // Use REAL STRC price if available, otherwise model from BTC
+  const strc = realStrc || (() => {
+    const pass = 0.30 + Math.random() * 0.10;
+    const parPull = (100 - prev.strc) * 0.03;
+    return Math.max(60, Math.min(140, prev.strc * (1 + btcRet * pass) + parPull));
+  })();
   const strcRet = (strc - prev.strc) / prev.strc;
   const dev = Math.abs(strc - 100);
   const r7 = Math.abs(btcRet) * Math.sqrt(P.WK) * 100;
@@ -64,12 +67,22 @@ function simEpoch(prev, btcPrice) {
   lev = Math.max(prev.lev - P.LEV_CAP, Math.min(prev.lev + P.LEV_CAP, lev));
   lev = Math.max(P.LEV_MIN, Math.min(P.LEV_MAX, lev));
   const { sr, jr, w } = waterfall(prev.sr, prev.jr, lev, strcRet);
+  // Track per-share returns BEFORE rebalancing
+  const srRet = prev.sr > 0 ? (sr - prev.sr) / prev.sr : 0;
+  const jrRet = prev.jr > 0 ? (jr - prev.jr) / prev.jr : 0;
+  const srSP = (prev.srSP || 100) * (1 + srRet);
+  const jrSP = (prev.jrSP || 100) * (1 + jrRet);
+  // Rebalance NAVs to maintain 70/30 (vault deposit gates enforce this)
+  const total = sr + jr;
+  const rSr = Math.round(total * 0.70);
+  const rJr = Math.round(total * 0.30);
   const d = new Date(prev.date); d.setDate(d.getDate() + 7);
   return {
     e: prev.e + 1, date: d.toISOString().split("T")[0],
-    sr, jr, lev: Math.round(lev * 100) / 100,
+    sr: rSr, jr: rJr, lev: Math.round(lev * 100) / 100,
     vol: Math.round(r30 * 10) / 10, reg, comp: Math.round(comp * 1000) / 1000,
     btc: Math.round(btcPrice), strc: Math.round(strc * 100) / 100, live: true, w,
+    srSP: Math.round(srSP * 100) / 100, jrSP: Math.round(jrSP * 100) / 100,
   };
 }
 
@@ -240,57 +253,74 @@ function DocsPage() {
 // ============================================================
 export default function App() {
   const [btc, setBtc] = useState(null);
+  const [strc, setStrc] = useState(null);
   const [liveEps, setLiveEps] = useState([]);
   const [tab, setTab] = useState("dashboard");
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-  // Price feed
+  // Price feed — real BTC + real STRC via serverless function
   useEffect(() => {
     const f = async () => {
+      try {
+        // Try our API endpoint first (Vercel serverless)
+        const r = await fetch("/api/prices");
+        if (r.ok) {
+          const d = await r.json();
+          if (d.btcPrice) setBtc(d.btcPrice);
+          if (d.strcPrice) setStrc(d.strcPrice);
+          setLastUpdate(Date.now());
+          return;
+        }
+      } catch {}
+      // Fallback: CoinGecko for BTC (local dev)
       try {
         const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
         const d = await r.json();
         if (d?.bitcoin?.usd) setBtc(d.bitcoin.usd);
+        setLastUpdate(Date.now());
       } catch {}
     };
-    f(); const iv = setInterval(f, 60000);
+    f(); const iv = setInterval(f, 15000);
     return () => clearInterval(iv);
   }, []);
 
-  // Forward simulation — recalculates when BTC updates
+  // Forward simulation — recalculates when BTC or STRC updates
   useEffect(() => {
     if (!btc) return;
     const last = BT[BT.length - 1];
     const wks = Math.floor((Date.now() - new Date(last.date).getTime()) / (7*864e5));
     if (wks <= 0) { setLiveEps([]); return; }
     const eps = [];
-    let prev = last;
+    let prev = {...last, srSP: last.sr/BT[0].sr*100, jrSP: last.jr/BT[0].jr*100};
     for (let i = 0; i < wks; i++) {
       const progress = (i + 1) / wks;
       const b = last.btc + (btc - last.btc) * progress;
-      const ep = simEpoch(prev, b);
+      // Use real STRC for the latest epoch, interpolate for intermediate
+      const s = strc ? (i === wks - 1 ? strc : last.strc + (strc - last.strc) * progress) : null;
+      const ep = simEpoch(prev, b, s);
       eps.push(ep);
       prev = ep;
     }
     setLiveEps(eps);
-  }, [btc]);
+  }, [btc, strc]);
 
   const all = useMemo(() => [...BT, ...liveEps], [liveEps]);
   const latest = all[all.length - 1];
   const first = all[0];
   const tvl = latest.sr + latest.jr;
-  const ratio = latest.sr / tvl * 100;
-  const srTot = (latest.sr - first.sr) / first.sr * 100;
-  const jrTot = (latest.jr - first.jr) / first.jr * 100;
+  const ratio = liveEps.length > 0 ? 70.0 : (latest.sr / tvl * 100); // Forward: 70/30 enforced
+  const srTot = latest.srSP ? (latest.srSP - 100) : ((latest.sr - first.sr) / first.sr * 100);
+  const jrTot = latest.jrSP ? (latest.jrSP - 100) : ((latest.jr - first.jr) / first.jr * 100);
 
   // Junior max DD
   let jrPk = first.jr, jrDD = 0;
   all.forEach(s => { if (s.jr > jrPk) jrPk = s.jr; const d = (s.jr - jrPk) / jrPk * 100; if (d < jrDD) jrDD = d; });
 
-  // Chart data
+  // Chart data — use share prices for forward, NAV-based for backtest
   const cd = all.map(s => ({
     label: s.date.slice(2,10).replace(/-/g,"/"),
-    srP: +(s.sr / first.sr * 100).toFixed(2),
-    jrP: +(s.jr / first.jr * 100).toFixed(2),
+    srP: +(s.srSP || (s.sr / first.sr * 100)).toFixed(2),
+    jrP: +(s.jrSP || (s.jr / first.jr * 100)).toFixed(2),
     lev: s.lev, vol: s.vol, comp: s.comp,
   }));
 
@@ -348,24 +378,25 @@ export default function App() {
           ))}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12,fontSize:11,fontFamily:F}}>
-          {btc && <>
-            <span style={{color:"#f97316",fontWeight:600}}>BTC ${btc.toLocaleString()}</span>
-            <span style={{width:6,height:6,borderRadius:3,background:liveEps.length>0?C.CALM:"#fbbf24",display:"inline-block"}} />
-            <span style={{color:C.D}}>{liveEps.length>0?"LIVE":"BACKTEST"}</span>
-          </>}
+          {btc && <span style={{color:"#f97316",fontWeight:600}}>BTC ${btc.toLocaleString()}</span>}
+          {strc && <span style={{color:C.SR,fontWeight:600}}>STRC ${strc.toFixed(2)}</span>}
+          {!strc && latest.strc && <span style={{color:C.DK}}>STRC ${latest.strc} <span style={{fontSize:8}}>(modeled)</span></span>}
+          <span style={{width:6,height:6,borderRadius:3,background:liveEps.length>0?C.CALM:"#fbbf24",display:"inline-block",animation:liveEps.length>0?"pulse 2s infinite":"none"}} />
+          <span style={{color:liveEps.length>0?C.CALM:C.D,fontWeight:liveEps.length>0?600:400}}>{liveEps.length>0?"LIVE":"BACKTEST"}</span>
         </div>
       </div>
 
       {tab==="docs" ? <DocsPage /> : <>
         {/* SIMULATION BANNER */}
         <div style={{background:"rgba(251,191,36,0.04)",borderBottom:"1px solid rgba(251,191,36,0.08)",padding:"6px 24px",fontSize:10.5,color:"rgba(251,191,36,0.7)",fontFamily:F,letterSpacing:"0.02em"}}>
-          ◆ {BT.length} backtest{liveEps.length>0?` + ${liveEps.length} live`:""} epochs • $1M simulated TVL • No real capital deployed
+          ◆ {BT.length} backtest{liveEps.length>0?` + ${liveEps.length} live`:""} epochs • $1M simulated TVL • {strc?"Real STRC + BTC prices":"BTC price live"} • Updates every 15s • No real capital deployed
         </div>
 
         <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 20px 40px"}}>
           {/* KPI ROW */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(152px,1fr))",gap:10,marginBottom:20,animation:"slideUp 0.4s ease-out"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:20,animation:"slideUp 0.4s ease-out"}}>
             <Kpi label="Total TVL" value={$f(tvl)} sub="Simulated $1M start" />
+            <Kpi label="STRC Price" value={`$${(strc||latest.strc).toFixed(2)}`} sub={strc?"Live Nasdaq":"Last known"} color={strc?"#34d399":C.DK} pulse={!!strc} />
             <Kpi label="Senior APY" value="8.00%" sub={pf(srTot)+" cumulative"} color={C.SR} />
             <Kpi label="Junior Return" value={pf(jrTot)} sub={$f(latest.jr)+" NAV"} color={C.JR} />
             <Kpi label="Leverage" value={latest.lev.toFixed(2)+"x"} sub={`${P.LEV_MIN}–${P.LEV_MAX}x range`} />

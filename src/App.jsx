@@ -333,8 +333,36 @@ export default function App() {
   }, [btc, strc]);
 
   const all = useMemo(() => [...BT, ...liveEps], [liveEps]);
-  const latest = all[all.length - 1];
+  const lastEpoch = all[all.length - 1];
   const first = all[0];
+
+  // === REAL-TIME INTRA-EPOCH NAV ===
+  // Between epoch settlements, junior NAV moves with STRC price (leveraged MTM)
+  // Senior accrues its coupon linearly. This gives tick-by-tick movement.
+  const currentStrc = strc || lastEpoch.strc;
+  const strcRetSinceEpoch = (currentStrc - lastEpoch.strc) / lastEpoch.strc;
+  const daysSinceEpoch = (Date.now() - new Date(lastEpoch.date).getTime()) / 864e5;
+  const epochProgress = Math.min(1, daysSinceEpoch / 7); // 0-1 within current week
+  
+  // Senior: accrues coupon linearly within epoch
+  const srIntraEpoch = lastEpoch.sr * (1 + (P.SR_NET / P.WK) * epochProgress);
+  
+  // Junior: gets leveraged MTM from STRC + yield accrual
+  const pool = lastEpoch.sr + lastEpoch.jr;
+  const levMTM = pool * strcRetSinceEpoch * lastEpoch.lev; // leveraged price impact on pool
+  const yieldAccrued = pool * (lastEpoch.lev * P.SUSDAT / P.WK - (lastEpoch.lev - 1) * P.BORROW / P.WK) * epochProgress;
+  const srCouponAccrued = lastEpoch.sr * (P.SR_GROSS / P.WK) * epochProgress;
+  const jrIntraEpoch = Math.max(0, lastEpoch.jr + levMTM + (yieldAccrued - srCouponAccrued) * epochProgress);
+  
+  // "latest" is the real-time view (intra-epoch adjusted)
+  const latest = {
+    ...lastEpoch,
+    sr: Math.round(srIntraEpoch),
+    jr: Math.round(jrIntraEpoch),
+    strc: currentStrc,
+    btc: btc || lastEpoch.btc,
+  };
+  
   const tvl = latest.sr + latest.jr;
   const ratio = 70.0; // Always 70/30 — vault deposit gates enforce this
 
@@ -348,9 +376,9 @@ export default function App() {
   // Health factor from leverage
   const hf = lev > 1 ? (lev * 0.825) / (lev - 1) : Infinity;
 
-  // Junior since-inception return (share-price based for forward, NAV for backtest)
-  const jrSinceInception = latest.jrSP ? (latest.jrSP - 100) : ((latest.jr - first.jr) / first.jr * 100);
-  const srSinceInception = latest.srSP ? (latest.srSP - 100) : ((latest.sr - first.sr) / first.sr * 100);
+  // Junior since-inception return (uses real-time intra-epoch NAV)
+  const jrSinceInception = ((latest.jr - first.jr) / first.jr) * 100;
+  const srSinceInception = ((latest.sr - first.sr) / first.sr) * 100;
 
   // Chart data — use share prices for forward, NAV-based for backtest
   const cd = all.map(s => ({
@@ -417,8 +445,8 @@ export default function App() {
           {btc && <span style={{color:"#f97316",fontWeight:600}}>BTC ${btc.toLocaleString()}</span>}
           {strc && <span style={{color:C.SR,fontWeight:600}}>STRC ${strc.toFixed(2)}</span>}
           {!strc && latest.strc && <span style={{color:"#CBD5E8"}}>STRC ${latest.strc} <span style={{fontSize:8}}>(modeled)</span></span>}
-          <span style={{width:6,height:6,borderRadius:3,background:liveEps.length>0?C.CALM:"#fbbf24",display:"inline-block",animation:liveEps.length>0?"pulse 2s infinite":"none"}} />
-          <span style={{color:liveEps.length>0?C.CALM:C.D,fontWeight:liveEps.length>0?600:400}}>{liveEps.length>0?"LIVE":"BACKTEST"}</span>
+          <span style={{width:6,height:6,borderRadius:3,background:strc?C.CALM:"#fbbf24",display:"inline-block",animation:strc?"pulse 2s infinite":"none"}} />
+          <span style={{color:strc?C.CALM:"#E5ECFF",fontWeight:strc?600:400}}>{strc?"LIVE":"BACKTEST"}</span>
         </div>
       </div>
 
@@ -431,7 +459,7 @@ export default function App() {
         <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 20px 40px"}}>
           {/* KPI ROW */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:20,animation:"slideUp 0.4s ease-out"}}>
-            <Kpi label="Total TVL" value={$f(tvl)} sub={tvl>1000000?`Started $1M`:"Simulated $1M start"} />
+            <Kpi label="Total TVL" value={$f(tvl)} sub={tvl>1000000?`Started $1M`:"Simulated $1M start"} pulse={!!strc} />
             <Kpi label="Senior APY" value="8.00%" sub={`+${srSinceInception.toFixed(1)}% since inception`} color={C.SR} />
             <Kpi label="Junior APY" value={`${jrNetApy>0?"+":""}${(jrNetApy*100).toFixed(1)}%`} sub={`${jrSinceInception>=0?"+":""}${jrSinceInception.toFixed(1)}% since inception`} color={C.JR} pulse={liveEps.length>0} />
             <Kpi label="Pool Yield" value={`${(poolApy*100).toFixed(1)}%`} sub="Gross leveraged APY" color={C.CALM} />

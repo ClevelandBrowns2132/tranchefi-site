@@ -152,9 +152,9 @@ function Kpi({label,value,sub,color,pulse}) {
   return (
     <div style={{padding:"14px 18px",background:C.CARD,border:`1px solid ${C.BD}`,borderRadius:8,position:"relative",overflow:"hidden"}}>
       {pulse && <div style={{position:"absolute",top:6,right:8,width:5,height:5,borderRadius:"50%",background:C.CALM,animation:"pulse 2s infinite"}}/>}
-      <div style={{fontSize:9.5,color:C.D,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:5,fontFamily:F}}>{label}</div>
+      <div style={{fontSize:9.5,color:"#E5ECFF",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:5,fontFamily:F}}>{label}</div>
       <div style={{fontSize:24,fontWeight:700,color:color||C.T,fontFamily:F,lineHeight:1.1,letterSpacing:"-0.02em"}}>{value}</div>
-      {sub && <div style={{fontSize:10.5,color:C.DK,marginTop:4,fontFamily:F}}>{sub}</div>}
+      {sub && <div style={{fontSize:10.5,color:"#CBD5E8",marginTop:4,fontFamily:F}}>{sub}</div>}
     </div>
   );
 }
@@ -163,7 +163,7 @@ function ChartTip({active,payload,label}) {
   if (!active||!payload?.length) return null;
   return (
     <div style={{background:"#0f1729",border:`1px solid rgba(91,156,245,0.15)`,borderRadius:6,padding:"10px 14px",fontSize:11,fontFamily:F,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
-      <div style={{color:C.M,marginBottom:5,fontWeight:500}}>{label}</div>
+      <div style={{color:"#E5ECFF",marginBottom:5,fontWeight:500}}>{label}</div>
       {payload.map((p,i)=>(
         <div key={i} style={{color:p.color,marginBottom:2,display:"flex",justifyContent:"space-between",gap:16}}>
           <span style={{opacity:0.7}}>{p.name}</span>
@@ -175,7 +175,7 @@ function ChartTip({active,payload,label}) {
 }
 
 function SectionLabel({children}) {
-  return <div style={{fontSize:10,color:C.D,textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:12,fontFamily:F,fontWeight:500}}>{children}</div>;
+  return <div style={{fontSize:10,color:"#E5ECFF",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:12,fontFamily:F,fontWeight:500}}>{children}</div>;
 }
 
 // ============================================================
@@ -396,7 +396,7 @@ export default function App() {
       <div style={{background:"rgba(12,20,35,0.9)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BD}`,padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,position:"sticky",top:0,zIndex:50}}>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
           <div style={{fontSize:21,fontWeight:700,letterSpacing:"-0.04em",cursor:"pointer"}} onClick={()=>setTab("dashboard")}>
-            <span style={{color:C.SR}}>Tranche</span><span style={{color:"#f8fafc"}}>Fi</span>
+            <span style={{color:C.SR}}>Tranche</span><span style={{color:C.JR}}>Fi</span>
           </div>
           <div style={{background:"linear-gradient(135deg,#fbbf24,#ef8b3a)",color:"#0a0a0a",fontSize:8.5,fontWeight:800,padding:"3px 10px",borderRadius:3,letterSpacing:"0.14em",fontFamily:F}}>
             PAPER PORTFOLIO
@@ -416,7 +416,7 @@ export default function App() {
         <div style={{display:"flex",alignItems:"center",gap:12,fontSize:11,fontFamily:F}}>
           {btc && <span style={{color:"#f97316",fontWeight:600}}>BTC ${btc.toLocaleString()}</span>}
           {strc && <span style={{color:C.SR,fontWeight:600}}>STRC ${strc.toFixed(2)}</span>}
-          {!strc && latest.strc && <span style={{color:C.DK}}>STRC ${latest.strc} <span style={{fontSize:8}}>(modeled)</span></span>}
+          {!strc && latest.strc && <span style={{color:"#CBD5E8"}}>STRC ${latest.strc} <span style={{fontSize:8}}>(modeled)</span></span>}
           <span style={{width:6,height:6,borderRadius:3,background:liveEps.length>0?C.CALM:"#fbbf24",display:"inline-block",animation:liveEps.length>0?"pulse 2s infinite":"none"}} />
           <span style={{color:liveEps.length>0?C.CALM:C.D,fontWeight:liveEps.length>0?600:400}}>{liveEps.length>0?"LIVE":"BACKTEST"}</span>
         </div>
@@ -449,8 +449,8 @@ export default function App() {
                   <linearGradient id="gj" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.JR} stopOpacity={0.12}/><stop offset="100%" stopColor={C.JR} stopOpacity={0}/></linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.04)" />
-                <XAxis dataKey="label" tick={{fontSize:9,fill:C.DK}} interval={intv} />
-                <YAxis tick={{fontSize:9,fill:C.DK}} domain={["dataMin-3","dataMax+5"]} tickFormatter={v=>`$${Number(v).toFixed(0)}`} yAxisId="p" />
+                <XAxis dataKey="label" tick={{fontSize:9,fill:"#B0B8CC"}} interval={intv} />
+                <YAxis tick={{fontSize:9,fill:"#B0B8CC"}} domain={["dataMin-3","dataMax+5"]} tickFormatter={v=>`$${Number(v).toFixed(0)}`} yAxisId="p" />
                 <Tooltip content={<ChartTip/>} />
                 <ReferenceLine yAxisId="p" y={100} stroke="rgba(148,163,184,0.08)" strokeDasharray="4 4" />
                 {liveEps.length>0 && <ReferenceLine yAxisId="p" x={BT[BT.length-1].date.slice(2,10).replace(/-/g,"/")} stroke="rgba(251,191,36,0.25)" strokeDasharray="6 3" label={{value:"LIVE →",position:"top",fontSize:8,fill:"rgba(251,191,36,0.5)"}} />}
@@ -463,7 +463,7 @@ export default function App() {
               <span style={{color:C.JR}}>● Junior (variable)</span>
               {liveEps.length>0 && <span style={{color:"rgba(251,191,36,0.6)"}}>│ Live from epoch {BT.length+1}</span>}
             </div>
-            <div style={{textAlign:"center",fontSize:9,color:C.DK,fontFamily:F,padding:"2px 0 0"}}>
+            <div style={{textAlign:"center",fontSize:9,color:"#CBD5E8",fontFamily:F,padding:"2px 0 0"}}>
               Backtest: 32 weeks of real STRC/BTC data{liveEps.length>0?" • Forward: live prices, updated every 15s":""} • Vault not deployed on-chain
             </div>
           </div>
@@ -476,9 +476,9 @@ export default function App() {
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={cd}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.04)" />
-                  <XAxis dataKey="label" tick={{fontSize:9,fill:C.DK}} interval={intv} />
-                  <YAxis yAxisId="l" tick={{fontSize:9,fill:C.DK}} domain={[1.1,2.1]} tickFormatter={v=>`${v}x`} />
-                  <YAxis yAxisId="v" orientation="right" tick={{fontSize:9,fill:C.DK}} domain={[0,80]} tickFormatter={v=>`${v}%`} />
+                  <XAxis dataKey="label" tick={{fontSize:9,fill:"#B0B8CC"}} interval={intv} />
+                  <YAxis yAxisId="l" tick={{fontSize:9,fill:"#B0B8CC"}} domain={[1.1,2.1]} tickFormatter={v=>`${v}x`} />
+                  <YAxis yAxisId="v" orientation="right" tick={{fontSize:9,fill:"#B0B8CC"}} domain={[0,80]} tickFormatter={v=>`${v}%`} />
                   <Tooltip content={<ChartTip/>} />
                   <ReferenceLine yAxisId="l" y={1.75} stroke="rgba(91,156,245,0.15)" strokeDasharray="3 3" />
                   <Area yAxisId="v" type="monotone" dataKey="vol" name="30d Vol" stroke="rgba(248,113,113,0.25)" fill="rgba(248,113,113,0.04)" dot={false} />
@@ -499,7 +499,7 @@ export default function App() {
                   {l:"→ Junior residual",v:wf.jr,c:C.JR},
                 ].map((r,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:200,fontSize:10,color:C.M,fontFamily:F,flexShrink:0}}>{r.l}</div>
+                    <div style={{width:200,fontSize:10,color:"#E5ECFF",fontFamily:F,flexShrink:0}}>{r.l}</div>
                     <div style={{flex:1,height:16,background:"rgba(148,163,184,0.03)",borderRadius:3,overflow:"hidden"}}>
                       <div style={{width:`${Math.max(3,r.v/wf.pw*100)}%`,height:"100%",background:r.c,opacity:0.4,borderRadius:3,transition:"width 0.3s"}} />
                     </div>
@@ -519,7 +519,7 @@ export default function App() {
                   title={`E${s.e}: ${s.reg} | ${s.lev}x | score ${s.comp}`} />
               ))}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:9,color:C.DK,fontFamily:F}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:9,color:"#CBD5E8",fontFamily:F}}>
               <span>E1 {all[0].date}</span>
               <div style={{display:"flex",gap:10}}>
                 {[["CALM","<0.3"],["MODERATE","0.3-0.5"],["ELEVATED","0.5-0.7"],["STRESS",">0.7"]].map(([k,s])=>
@@ -541,7 +541,7 @@ export default function App() {
               <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:700,color:"#f8fafc",fontFamily:F}}>SR {ratio.toFixed(1)}%</div>
               <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:700,color:"#f8fafc",fontFamily:F}}>JR {(100-ratio).toFixed(1)}%</div>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:9,color:C.DK,fontFamily:F}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:9,color:"#CBD5E8",fontFamily:F}}>
               <span>68% min ←</span><span>70% target</span><span>→ 72% max</span>
             </div>
           </div>
@@ -554,19 +554,19 @@ export default function App() {
                 <thead>
                   <tr style={{borderBottom:"1px solid rgba(148,163,184,0.08)"}}>
                     {["Month","Senior","Junior","Leverage","30d Vol",""].map(h=>(
-                      <th key={h} style={{padding:"7px 12px",textAlign:h==="Month"?"left":"right",color:C.D,fontWeight:500,fontSize:9.5,letterSpacing:"0.08em"}}>{h}</th>
+                      <th key={h} style={{padding:"7px 12px",textAlign:h==="Month"?"left":"right",color:"#E5ECFF",fontWeight:500,fontSize:9.5,letterSpacing:"0.08em"}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {monthly.map((m,i)=>(
                     <tr key={i} style={{borderBottom:`1px solid ${C.BD}`,background:m.live?"rgba(251,191,36,0.02)":"transparent"}}>
-                      <td style={{padding:"7px 12px",color:C.M}}>{m.month}</td>
+                      <td style={{padding:"7px 12px",color:"#E5ECFF"}}>{m.month}</td>
                       <td style={{padding:"7px 12px",textAlign:"right",color:C.SR,fontWeight:500}}>{pf(m.srR)}</td>
                       <td style={{padding:"7px 12px",textAlign:"right",color:m.jrR>=0?C.JR:C.STRESS,fontWeight:500}}>{pf(m.jrR)}</td>
-                      <td style={{padding:"7px 12px",textAlign:"right",color:C.M}}>{m.lev.toFixed(2)}x</td>
-                      <td style={{padding:"7px 12px",textAlign:"right",color:C.M}}>{m.vol.toFixed(1)}%</td>
-                      <td style={{padding:"7px 12px",textAlign:"right",fontSize:9,color:C.DK}}>{m.live?"live":"backtest"}</td>
+                      <td style={{padding:"7px 12px",textAlign:"right",color:"#E5ECFF"}}>{m.lev.toFixed(2)}x</td>
+                      <td style={{padding:"7px 12px",textAlign:"right",color:"#E5ECFF"}}>{m.vol.toFixed(1)}%</td>
+                      <td style={{padding:"7px 12px",textAlign:"right",fontSize:9,color:"#CBD5E8"}}>{m.live?"live":"backtest"}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -130,9 +130,10 @@ const BT = [
 const C = {
   SR:"#5b9cf5", JR:"#ef8b3a",
   CALM:"#34d399", MOD:"#fbbf24", ELEV:"#fb923c", STRESS:"#f87171",
-  T:"#e2e8f0", M:"#94a3b8", D:"#64748b", DK:"#475569",
-  BG:"#04080f", CARD:"rgba(12,20,35,0.65)", BD:"rgba(148,163,184,0.06)",
+  T:"#E5ECFF", M:"#B0B8CC", D:"#8B93A7", DK:"#5E667A",
+  BG:"#050814", CARD:"rgba(11,16,32,0.85)", BD:"rgba(148,163,184,0.08)",
   ACCENT:"rgba(91,156,245,0.08)",
+  DOCBG:"#0B1020", DOCBD:"#1F2933",
 };
 const RC = {CALM:C.CALM,MODERATE:C.MOD,ELEVATED:C.ELEV,STRESS:C.STRESS};
 const F = "'JetBrains Mono','IBM Plex Mono','SF Mono',monospace";
@@ -181,78 +182,94 @@ function SectionLabel({children}) {
 // DOCS PAGE
 // ============================================================
 function DocsPage() {
-  const S = ({t,children}) => (
-    <div style={{marginBottom:32}}>
-      <h2 style={{fontSize:17,fontWeight:600,color:C.T,marginBottom:10,fontFamily:FS}}>{t}</h2>
-      <div style={{fontSize:14,color:C.M,lineHeight:1.8,fontFamily:FS}}>{children}</div>
+  const S = ({t,children,accent}) => (
+    <div style={{marginBottom:36,paddingLeft:accent?16:0,borderLeft:accent?`3px solid ${accent}`:"none"}}>
+      <h2 style={{fontSize:21,fontWeight:600,color:"#F7FAFF",marginBottom:12,fontFamily:FS,letterSpacing:"-0.01em"}}>{t}</h2>
+      <div style={{fontSize:14.5,color:"#E5ECFF",lineHeight:1.7,fontFamily:FS}}>{children}</div>
     </div>
   );
+  const K = ({children}) => <span style={{color:"#FBBF24",fontWeight:600}}>{children}</span>;
+  const B = ({children}) => <span style={{color:"#CBD5FF",fontWeight:500}}>{children}</span>;
+  const Note = ({children}) => <p style={{margin:"10px 0 0",fontSize:13,color:"#8B93A7",lineHeight:1.6}}>{children}</p>;
+
   return (
-    <div style={{maxWidth:760,margin:"0 auto",padding:"36px 24px"}}>
-      <h1 style={{fontSize:32,fontWeight:700,marginBottom:6,color:"#f8fafc",fontFamily:FS,letterSpacing:"-0.03em"}}>How TrancheFi Works</h1>
-      <p style={{color:C.M,fontSize:14.5,marginBottom:36,fontFamily:FS,lineHeight:1.6}}>Structured credit for DeFi — two tranches, one vault, institutional-grade risk separation.</p>
+    <div style={{maxWidth:800,margin:"0 auto",padding:"36px 24px"}}>
+      <div style={{background:C.DOCBG,border:`1px solid ${C.DOCBD}`,borderRadius:12,padding:"40px 36px"}}>
+        <h1 style={{fontSize:32,fontWeight:700,marginBottom:6,color:"#F7FAFF",fontFamily:FS,letterSpacing:"-0.03em"}}>How TrancheFi Works</h1>
+        <p style={{color:"#B0B8CC",fontSize:15,marginBottom:40,fontFamily:FS,lineHeight:1.6}}>Structured credit for DeFi — two tranches, one vault, institutional-grade risk separation.</p>
 
-      <S t="The Core Idea">
-        TrancheFi takes leveraged exposure to Saturn's sUSDat (a yield-bearing stablecoin backed by Strategy's STRC digital credit) and splits it into two tranches with fundamentally different risk/return profiles. Senior gets a fixed 8% net yield, paid first from the income stream. Junior absorbs all residual yield and all price volatility — in exchange for amplified returns in the 21-25% range under normal conditions.
-      </S>
+        <S t="The Core Idea">
+          <p style={{margin:"0 0 10px"}}>TrancheFi takes leveraged exposure to Saturn's <B>sUSDat</B> (a yield-bearing stablecoin backed by Strategy's STRC digital credit) and splits it into two tranches with fundamentally different risk/return profiles.</p>
+          <p style={{margin:"0 0 8px"}}><K>Senior</K> gets a fixed <K>8% net yield</K>, paid first from the income stream. Zero drawdowns by design — junior absorbs all volatility before senior principal is touched.</p>
+          <p style={{margin:"0 0 0"}}><K>Junior</K> absorbs all residual yield and all price volatility — in exchange for amplified returns in the <K>21-25% range</K> under normal market conditions.</p>
+        </S>
 
-      <S t="Weekly Epochs">
-        <p style={{margin:"0 0 10px"}}>The vault settles on a 7-day cycle. Every week:</p>
-        <p style={{margin:"0 0 8px"}}><span style={{color:C.SR,fontWeight:600}}>1. Senior coupon</span> — 8.5% gross (~0.163%/wk). After 0.50% mgmt fee → 8.0% net (8.32% effective APY with weekly compounding).</p>
-        <p style={{margin:"0 0 8px"}}><span style={{color:C.M,fontWeight:600}}>2. Management fees</span> — 0.50% annual on each tranche's NAV.</p>
-        <p style={{margin:"0 0 8px"}}><span style={{color:C.M,fontWeight:600}}>3. Performance fee</span> — 10% on junior's realized yield income only. Not charged on mark-to-market. No hurdle rate.</p>
-        <p style={{margin:"0 0 8px"}}><span style={{color:C.JR,fontWeight:600}}>4. Junior residual</span> — all remaining yield + ALL mark-to-market (positive or negative).</p>
-        <p style={{margin:"14px 0 0",fontSize:13,color:C.DK}}>Senior's yield comes from dividend income, not price appreciation. STRC price drops affect junior NAV. Senior principal impaired only after junior fully wiped.</p>
-      </S>
+        <S t="Weekly Epochs">
+          <p style={{margin:"0 0 12px"}}>The vault settles on a 7-day cycle. Every week, income flows through a strict waterfall:</p>
+          <p style={{margin:"0 0 8px"}}><span style={{color:C.SR,fontWeight:600}}>1. Senior coupon</span> — 8.5% gross (~0.163%/wk). After 0.50% mgmt fee → 8.0% net (8.32% effective APY with weekly compounding).</p>
+          <p style={{margin:"0 0 8px"}}><B>2. Management fees</B> — 0.50% annual on each tranche's NAV, deducted weekly.</p>
+          <p style={{margin:"0 0 8px"}}><B>3. Performance fee</B> — 10% on junior's realized yield income only. Not charged on mark-to-market. No hurdle rate.</p>
+          <p style={{margin:"0 0 8px"}}><span style={{color:C.JR,fontWeight:600}}>4. Junior residual</span> — all remaining yield + ALL mark-to-market (positive or negative).</p>
+          <Note>Senior's yield comes from dividend income, not price appreciation. STRC price drops affect junior NAV. Senior principal impaired only after junior is fully wiped.</Note>
+        </S>
 
-      <S t="Three-Signal Leverage System">
-        <p style={{margin:"0 0 10px"}}>Dynamic leverage 1.25x–2.0x via three-signal composite, updated every epoch:</p>
-        <p style={{margin:"0 0 8px"}}><strong>Signal 1 — BTC DVOL (40%):</strong> Forward-looking 30d implied vol from Deribit. Leads realized by 12-48hr. Range: 18%–39%.</p>
-        <p style={{margin:"0 0 8px"}}><strong>Signal 2 — BTC 7d realized vol (35%):</strong> Confirms if implied fear is materializing. Range: 20%–45%.</p>
-        <p style={{margin:"0 0 8px"}}><strong>Signal 3 — STRC par deviation (25%):</strong> Collateral-specific mean reversion. Ceiling: 4.3%.</p>
-        <p style={{margin:"14px 0 0",fontSize:13,color:C.DK}}>Composite: CALM {"<"}0.3 → MODERATE 0.3-0.5 → ELEVATED 0.5-0.7 → STRESS {">"}0.7. EWMA smoothing (α=0.40). Max ±0.25x/epoch.</p>
-        <p style={{margin:"10px 0 0",fontSize:13,color:C.DK}}>Paper portfolio note: DVOL is approximated from realized vol (DVOL ≈ 1.15× 30d realized). On-chain, the vault would use a live Deribit DVOL oracle feed via Chainlink for actual forward-looking implied volatility.</p>
-      </S>
+        <S t="Three-Signal Leverage System">
+          <p style={{margin:"0 0 12px"}}>Dynamic leverage <K>1.25x–2.0x</K> via three-signal composite, updated every epoch:</p>
+          <p style={{margin:"0 0 8px"}}><B>Signal 1 — BTC DVOL (40%):</B> Forward-looking 30d implied vol from Deribit. Leads realized by 12-48hr. Normalized range: 18%–39%.</p>
+          <p style={{margin:"0 0 8px"}}><B>Signal 2 — BTC 7d realized vol (35%):</B> Confirms if implied fear is materializing. Normalized range: 20%–45%.</p>
+          <p style={{margin:"0 0 8px"}}><B>Signal 3 — STRC par deviation (25%):</B> Collateral-specific mean reversion signal. Ceiling: 4.3% from $100 par.</p>
+          <Note>Regimes: CALM {"<"}0.3 → MODERATE 0.3-0.5 → ELEVATED 0.5-0.7 → STRESS {">"}0.7. EWMA smoothing (α=0.40). Max ±0.25x change per epoch.</Note>
+          <Note>Paper portfolio note: DVOL is approximated from realized vol (DVOL ≈ 1.15× 30d realized). On-chain, the vault would use a live Deribit DVOL oracle feed via Chainlink for actual forward-looking implied volatility.</Note>
+        </S>
 
-      <S t="The 70/30 Ratio">
-        70% senior / 30% junior. Junior gets ~5.8x effective exposure to spread above senior cost. Deposits queued outside 68-72% band. Self-correcting: senior overweight → junior APY rises → attracts junior capital.
-      </S>
+        <S t="The 70/30 Ratio">
+          <p style={{margin:"0 0 8px"}}><K>70% senior / 30% junior.</K> Junior gets ~5.8x effective exposure to the spread above senior cost. Deposits are queued if they would push the ratio outside the 68-72% band.</p>
+          <p style={{margin:0}}>Self-correcting: if senior becomes overweight, junior APY rises mechanically → attracts junior capital → ratio rebalances.</p>
+        </S>
 
-      <S t="Risk Management">
-        <p style={{margin:"0 0 10px"}}>Four-level deleveraging cascade: HF ≤ 1.30 → reduce to 1.50x. HF ≤ 1.10 → deleverage to 1.0x. HF ≤ 1.05 → exit 25%/epoch. HF ≤ 1.02 → emergency shutdown. HF checked every 30s. Withdrawal cap: 15% of tranche TVL per epoch. 5-10% USDC reserve for instant redemptions.</p>
-        <p style={{margin:"10px 0 0",fontSize:13,color:C.DK}}>Health factor on the dashboard is a closed-form approximation from leverage and liquidation threshold. On-chain, HF would be computed directly from Aave/Morpho account state (collateral value × liquidation threshold / borrowed amount).</p>
-      </S>
+        <S t="Risk Management">
+          <p style={{margin:"0 0 10px"}}>Four-level deleveraging cascade triggered by health factor thresholds:</p>
+          <p style={{margin:"0 0 6px"}}><B>HF ≤ 1.30:</B> Reduce leverage toward 1.50x</p>
+          <p style={{margin:"0 0 6px"}}><B>HF ≤ 1.10:</B> Deleverage to 1.0x</p>
+          <p style={{margin:"0 0 6px"}}><B>HF ≤ 1.05:</B> Exit 25% of positions per epoch</p>
+          <p style={{margin:"0 0 10px"}}><B>HF ≤ 1.02:</B> Emergency shutdown</p>
+          <p style={{margin:"0 0 0"}}>HF checked every 30 seconds. Withdrawal cap: 15% of tranche TVL per epoch. 5-10% USDC reserve for instant redemptions.</p>
+          <Note>Dashboard health factor is a closed-form approximation from leverage and liquidation threshold. On-chain, HF would be computed directly from Aave/Morpho account state (collateral value × liquidation threshold / borrowed amount).</Note>
+        </S>
 
-      <S t="What This Dashboard Does and Doesn't Do">
-        <p style={{margin:"0 0 10px"}}>This is a paper portfolio demonstrating the vault's economic engine — the math that governs yield splitting, leverage adjustment, and waterfall distribution. It runs the same formulas that the production Solidity contracts implement.</p>
-        <p style={{margin:"0 0 8px"}}><strong>What's live:</strong> Real BTC price (CoinGecko), real STRC price (Yahoo Finance / Nasdaq), three-signal composite, dynamic leverage, full waterfall math, per-share return tracking.</p>
-        <p style={{margin:"0 0 8px"}}><strong>What's simulated:</strong> There are no actual lending positions on Aave/Morpho — health factor is derived from leverage, not from on-chain collateral/debt. No withdrawal queues, epoch caps, or USDC reserve management (those are described for the production vault). No real deposits or redemptions.</p>
-        <p style={{margin:"0 0 0",fontSize:13,color:C.DK}}>The vault is not deployed on-chain. Production deployment requires Saturn Protocol mainnet, audited Solidity contracts, and Aave/Morpho integration.</p>
-      </S>
+        <S t="What This Dashboard Does and Doesn't Do" accent={C.JR}>
+          <p style={{margin:"0 0 10px"}}>This is a <K>paper portfolio</K> demonstrating the vault's economic engine — the math that governs yield splitting, leverage adjustment, and waterfall distribution. It runs the same formulas that the production Solidity contracts implement.</p>
+          <p style={{margin:"0 0 8px"}}><B>What's live:</B> Real BTC price (CoinGecko), real STRC price (Yahoo Finance / Nasdaq), three-signal composite, dynamic leverage, full waterfall math, per-share return tracking. Updates every 15 seconds.</p>
+          <p style={{margin:"0 0 8px"}}><B>What's simulated:</B> There are no actual lending positions on Aave/Morpho — health factor is derived from leverage, not from on-chain collateral/debt. No withdrawal queues, epoch caps, or USDC reserve management. No real deposits or redemptions.</p>
+          <Note><K>No real capital deployed.</K> The vault is not deployed on-chain. Production deployment requires Saturn Protocol mainnet, audited Solidity contracts, and Aave/Morpho integration.</Note>
+        </S>
 
-      <S t="Paper Portfolio">
-        <p style={{margin:"0 0 8px"}}>32 verified backtest epochs (Jul 2025 – Mar 2026) using real STRC/BTC prices, plus live forward simulation from current market data. $1M simulated TVL. No real capital deployed.</p>
-        <p style={{margin:"0 0 8px"}}>The backtest and forward simulation are displayed as one continuous timeline. A vertical marker on the chart indicates where backtest ends and live simulation begins. Forward epochs use real-time STRC and BTC prices, polled every 15 seconds.</p>
-        <p style={{margin:"0 0 0",fontSize:13,color:C.DK}}>Junior since-inception returns include both yield income and STRC mark-to-market effects. A substantial portion of backtest-period returns came from STRC's recovery from its IPO discount (~$93.74 → $100), which was a one-time event. Forward junior APY shown in the dashboard is calculated purely from current leverage and yield spreads — it reflects ongoing income, not price appreciation.</p>
-      </S>
+        <S t="Paper Portfolio" accent={C.SR}>
+          <p style={{margin:"0 0 8px"}}><K>32 verified backtest epochs</K> (Jul 2025 – Mar 2026) using real STRC/BTC prices, plus live forward simulation from current market data. $1M simulated TVL.</p>
+          <p style={{margin:"0 0 8px"}}>The backtest and forward simulation are displayed as one continuous timeline. A vertical marker on the chart indicates where backtest ends and live simulation begins. Forward epochs use real-time STRC and BTC prices.</p>
+          <Note>Junior since-inception returns include both yield income and STRC mark-to-market effects. A substantial portion of backtest-period returns came from STRC's recovery from its IPO discount (~$93.74 → $100), which was a one-time event. Forward junior APY shown in the KPI cards is calculated purely from current leverage and yield spreads — it reflects ongoing income, not price appreciation.</Note>
+        </S>
 
-      <div style={{marginTop:44,padding:20,background:C.ACCENT,border:"1px solid rgba(91,156,245,0.12)",borderRadius:10}}>
-        <div style={{fontSize:12,fontWeight:600,color:C.SR,marginBottom:12,fontFamily:F}}>Protocol Parameters — Whitepaper v5.3</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 40px",fontSize:11.5,color:C.M,fontFamily:F}}>
-          {[
-            ["Senior yield","8.0% net (8.5% gross)"],
-            ["Mgmt fees","0.50% each tranche"],
-            ["Perf fee","10% yield income, no hurdle"],
-            ["Leverage","1.25x – 2.00x"],
-            ["EWMA α","0.40 (λ=0.60)"],
-            ["Epoch","7 days"],
-            ["Ratio","70/30 (band 65-75)"],
-            ["HF trigger","1.30 / 1.05 shutdown"],
-          ].map(([k,v],i) => (
-            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.BD}`}}>
-              <span>{k}</span><span style={{color:C.T,fontWeight:500}}>{v}</span>
-            </div>
-          ))}
+        <div style={{marginTop:44,padding:20,background:"rgba(91,156,245,0.06)",border:"1px solid rgba(91,156,245,0.12)",borderRadius:10}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.SR,marginBottom:12,fontFamily:F}}>Protocol Parameters — Whitepaper v5.3</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 40px",fontSize:11.5,color:"#B0B8CC",fontFamily:F}}>
+            {[
+              ["Senior yield","8.0% net (8.5% gross)"],
+              ["Mgmt fees","0.50% each tranche"],
+              ["Perf fee","10% yield income, no hurdle"],
+              ["Leverage","1.25x – 2.00x"],
+              ["EWMA α","0.40 (λ=0.60)"],
+              ["Epoch","7 days"],
+              ["Ratio","70/30 (band 68-72)"],
+              ["sUSDat yield","10.35% (11.5% × 90%)"],
+              ["Borrow rate","5.5% (Aave USDC)"],
+              ["HF trigger","1.30 / 1.05 shutdown"],
+            ].map(([k,v],i) => (
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.DOCBD}`}}>
+                <span>{k}</span><span style={{color:"#E5ECFF",fontWeight:500}}>{v}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

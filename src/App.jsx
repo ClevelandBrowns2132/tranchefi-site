@@ -336,7 +336,11 @@ if (daysFrac > 0.01) {
 const nowEp = simEpoch(prev, btc, strc || null);
 const srDelta = nowEp.sr - prev.sr;
 const jrDelta = nowEp.jr - prev.jr;
-eps.push({...nowEp, sr: prev.sr + srDelta * daysFrac, jr: prev.jr + jrDelta * daysFrac, date: new Date().toISOString().split("T")[0], live: true});
+const prevSrSP = prev.srSP || (prev.sr / BT[0].sr * 100);
+const prevJrSP = prev.jrSP || (prev.jr / BT[0].jr * 100);
+const srSPDelta = (nowEp.srSP || prevSrSP) - prevSrSP;
+const jrSPDelta = (nowEp.jrSP || prevJrSP) - prevJrSP;
+eps.push({...nowEp, sr: prev.sr + srDelta * daysFrac, jr: prev.jr + jrDelta * daysFrac, srSP: prevSrSP + srSPDelta * daysFrac, jrSP: prevJrSP + jrSPDelta * daysFrac, date: new Date().toISOString().split("T")[0], live: true});
 }
 setLiveEps(eps);
 }, [btc, strc]);
@@ -402,13 +406,19 @@ jrP: +(s.jrSP || (s.jr / first.jr * 100)).toFixed(2),
 lev: s.lev, vol: s.vol, comp: s.comp,
 }));
 
-// Monthly
+// Monthly — use share prices when available (avoids rebalancing artifacts)
 const mm = {};
 all.forEach(s => { const m = s.date.slice(0,7); if (!mm[m]) mm[m] = {o:s}; mm[m].c = s; });
-const monthly = Object.entries(mm).map(([m,{o,c}]) => ({
-month:m, srR:(c.sr-o.sr)/o.sr*100, jrR:(c.jr-o.jr)/o.jr*100,
+const monthly = Object.entries(mm).map(([m,{o,c}]) => {
+const oSrP = o.srSP || (o.sr / first.sr * 100);
+const cSrP = c.srSP || (c.sr / first.sr * 100);
+const oJrP = o.jrSP || (o.jr / first.jr * 100);
+const cJrP = c.jrSP || (c.jr / first.jr * 100);
+return {
+month:m, srR:(cSrP-oSrP)/oSrP*100, jrR:(cJrP-oJrP)/oJrP*100,
 lev:c.lev, vol:c.vol, live:c.live,
-}));
+};
+});
 
 // Waterfall rates for display
 const wf = (() => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import {
-  AreaChart, Area, LineChart, Line, XAxis, YAxis,
+  AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 
@@ -16,7 +16,6 @@ function computeHF(lev, strcRet) {
   if (lev <= 1) return 99;
   return (lev * (1 + strcRet) * P.LLTV) / (lev - 1);
 }
-
 function hfCascade(curLev, hf) {
   if (hf >= P.HF_NORMAL) return curLev;
   if (hf >= P.HF_FREEZE) return curLev;
@@ -24,7 +23,6 @@ function hfCascade(curLev, hf) {
   if (hf >= P.HF_ACCEL) return curLev - 0.60 * (curLev - 1.0);
   return 1.0;
 }
-
 function waterfall(sr, jr, lev, strcRet) {
   const pool = sr + jr;
   const wkY = P.SUSDAT / P.WK, wkB = P.BORROW / P.WK;
@@ -40,9 +38,8 @@ function waterfall(sr, jr, lev, strcRet) {
   let newSr = sr + srCoup - srFee;
   let newJr = Math.max(0, jr + jrDelta);
   if (jr + jrDelta < 0) newSr = Math.max(0, newSr - Math.abs(jr + jrDelta));
-  return { sr: Math.round(newSr), jr: Math.round(newJr), w: { poolRate, poolInc, poolMTM, srCoup, srFee, jrFee, perf, jrGross, jrDelta, total: srFee + jrFee + perf } };
+  return { sr: Math.round(newSr), jr: Math.round(newJr) };
 }
-
 function simEpoch(prev, btcPrice, realStrc) {
   const strc = realStrc || (() => {
     const btcRet = (btcPrice - prev.btc) / prev.btc;
@@ -54,14 +51,14 @@ function simEpoch(prev, btcPrice, realStrc) {
   const hf = computeHF(prev.lev, strcRet);
   let lev = hfCascade(P.LEV, hf);
   lev = Math.max(1.0, Math.min(2.0, lev));
-  const { sr, jr, w } = waterfall(prev.sr, prev.jr, prev.lev, strcRet);
+  const { sr, jr } = waterfall(prev.sr, prev.jr, prev.lev, strcRet);
   const srRet = prev.sr > 0 ? (sr - prev.sr) / prev.sr : 0;
   const jrRet = prev.jr > 0 ? (jr - prev.jr) / prev.jr : 0;
   const srSP = (prev.srSP || 100) * (1 + srRet);
   const jrSP = (prev.jrSP || 100) * (1 + jrRet);
   const total = sr + jr;
   const d = new Date(prev.date); d.setDate(d.getDate() + 7);
-  return { e: prev.e + 1, date: d.toISOString().split("T")[0], sr: Math.round(total * 0.70), jr: Math.round(total * 0.30), lev: Math.round(lev * 100) / 100, btc: Math.round(btcPrice), strc: Math.round(strc * 100) / 100, hf: Math.round(hf * 100) / 100, live: true, w, srSP: Math.round(srSP * 100) / 100, jrSP: Math.round(jrSP * 100) / 100 };
+  return { e: prev.e + 1, date: d.toISOString().split("T")[0], sr: Math.round(total * 0.70), jr: Math.round(total * 0.30), lev: Math.round(lev * 100) / 100, btc: Math.round(btcPrice), strc: Math.round(strc * 100) / 100, hf: Math.round(hf * 100) / 100, live: true, srSP: Math.round(srSP * 100) / 100, jrSP: Math.round(jrSP * 100) / 100 };
 }
 
 const BT = [
@@ -115,6 +112,87 @@ function ChartTip({active,payload,label}) {
 }
 function SectionLabel({children}) { return <div style={{fontSize:10,color:"#E5ECFF",textTransform:"uppercase",letterSpacing:"0.14em",marginBottom:12,fontFamily:F,fontWeight:500}}>{children}</div>; }
 
+// === RETURNS BAR (Yahoo Finance style) ===
+function ReturnsBar({all, dailySrRet, dailyJrRet}) {
+  const last = all[all.length - 1];
+  const lastSr = last.srSP || 100, lastJr = last.jrSP || 100;
+  const ago = (n) => { const idx = all.length - 1 - n; return idx >= 0 ? all[idx] : all[0]; };
+  const w1 = ago(1), w4 = ago(4), w13 = ago(13), inc = all[0];
+  const periods = [
+    { label: "1D", sr: dailySrRet, jr: dailyJrRet },
+    { label: "1W", sr: (lastSr-(w1.srSP||100))/(w1.srSP||100)*100, jr: (lastJr-(w1.jrSP||100))/(w1.jrSP||100)*100 },
+    { label: "1M", sr: (lastSr-(w4.srSP||100))/(w4.srSP||100)*100, jr: (lastJr-(w4.jrSP||100))/(w4.jrSP||100)*100 },
+    { label: "3M", sr: (lastSr-(w13.srSP||100))/(w13.srSP||100)*100, jr: (lastJr-(w13.jrSP||100))/(w13.jrSP||100)*100 },
+    { label: "Inception", sr: lastSr - 100, jr: lastJr - 100 },
+  ];
+  const RV = ({v,color}) => <span style={{color:v>=0?(color||C.SAFE):C.DANGER,fontWeight:600,fontFamily:F,fontSize:11}}>{v>=0?"+":""}{v.toFixed(2)}%</span>;
+  return (
+    <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:"14px 18px",marginBottom:16}}>
+      <SectionLabel>Performance</SectionLabel>
+      <div style={{display:"grid",gridTemplateColumns:"80px repeat(5, 1fr)",gap:0,fontSize:11,fontFamily:F}}>
+        <div style={{padding:"6px 0"}}></div>
+        {periods.map(p => <div key={p.label} style={{padding:"6px 0",textAlign:"center",color:"#8B93A7",fontSize:9.5,letterSpacing:"0.08em",fontWeight:500}}>{p.label}</div>)}
+        <div style={{padding:"8px 0",color:C.SR,fontWeight:600,fontSize:10}}>sdcSENIOR</div>
+        {periods.map(p => <div key={"sr"+p.label} style={{padding:"8px 0",textAlign:"center"}}><RV v={p.sr} color={C.SR}/></div>)}
+        <div style={{padding:"8px 0",color:C.JR,fontWeight:600,fontSize:10,borderTop:"1px solid "+C.BD}}>sdcJUNIOR</div>
+        {periods.map(p => <div key={"jr"+p.label} style={{padding:"8px 0",textAlign:"center",borderTop:"1px solid "+C.BD}}><RV v={p.jr} color={C.JR}/></div>)}
+      </div>
+    </div>
+  );
+}
+
+// === VOLATILITY FLOW — Conservation of Volatility live diagram ===
+function VolFlow({btcPrice, strcPrice, mstrPrice, srVol, jrVol, strcVol}) {
+  const Node = ({label, price, vol, color, width, sub}) => (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:width||"auto"}}>
+      <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid "+C.BD,borderRadius:10,padding:"12px 18px",textAlign:"center",minWidth:130,position:"relative"}}>
+        <div style={{fontSize:10,color:color||"#E5ECFF",fontWeight:600,letterSpacing:"0.06em",marginBottom:4,fontFamily:F}}>{label}</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#F7FAFF",fontFamily:F,letterSpacing:"-0.02em"}}>{price}</div>
+        {vol !== undefined && <div style={{fontSize:10,color:vol > 30 ? C.DANGER : vol > 10 ? C.WARN : C.SAFE,fontFamily:F,marginTop:3,fontWeight:500}}>{vol.toFixed(1)}% vol</div>}
+        {sub && <div style={{fontSize:9,color:"#8B93A7",fontFamily:F,marginTop:2}}>{sub}</div>}
+      </div>
+    </div>
+  );
+  const Arrow = ({label}) => (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 0"}}>
+      <div style={{width:1,height:16,background:"rgba(148,163,184,0.15)"}}/>
+      {label && <div style={{fontSize:8,color:"#8B93A7",fontFamily:F,padding:"2px 6px",background:"rgba(148,163,184,0.05)",borderRadius:3}}>{label}</div>}
+      <div style={{width:1,height:16,background:"rgba(148,163,184,0.15)"}}/>
+    </div>
+  );
+  const Fork = ({children}) => (
+    <div style={{display:"flex",gap:20,justifyContent:"center",position:"relative"}}>
+      <div style={{position:"absolute",top:0,left:"50%",width:1,height:12,background:"rgba(148,163,184,0.15)",transform:"translateX(-50%)"}}/>
+      <div style={{position:"absolute",top:12,left:"calc(50% - 80px)",width:160,height:1,background:"rgba(148,163,184,0.12)"}}/>
+      <div style={{paddingTop:12}}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:18}}>
+      <SectionLabel>Conservation of Volatility — Live</SectionLabel>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,padding:"8px 0"}}>
+        <Node label="BITCOIN" price={"$"+(btcPrice?btcPrice.toLocaleString():"--")} vol={45} color="#f97316" sub="Digital capital"/>
+        <Arrow label="Capital structure"/>
+        <div style={{display:"flex",gap:24,justifyContent:"center"}}>
+          <Node label="MSTR" price={mstrPrice?"$"+mstrPrice.toFixed(0):"--"} vol={80} color="#a78bfa" sub="Equity (absorbs vol)"/>
+          <Node label="STRC" price={"$"+(strcPrice?strcPrice.toFixed(2):"--")} vol={strcVol} color={C.SR} sub="Credit (strips vol)"/>
+        </div>
+        <Arrow label="Saturn Protocol"/>
+        <Node label="sUSDat" price="10.35% yield" vol={strcVol} color={C.SAFE} sub="Programmable credit"/>
+        <Arrow label="TrancheFi vault (1.75x)"/>
+        <div style={{display:"flex",gap:24,justifyContent:"center"}}>
+          <Node label="sdcSENIOR" price="8% APY" vol={srVol} color={C.SR} sub="Stability"/>
+          <Node label="sdcJUNIOR" price={(jrVol > 0 ? "20" : "--")+"% APY"} vol={jrVol} color={C.JR} sub="Amplified yield"/>
+        </div>
+      </div>
+      <div style={{textAlign:"center",fontSize:9,color:"#8B93A7",fontFamily:F,marginTop:10}}>
+        Volatility is never destroyed — only redistributed. BTC's energy flows through each layer.
+      </div>
+    </div>
+  );
+}
+
 function DocsPage() {
   const S = ({t,children,accent}) => (<div style={{marginBottom:36,paddingLeft:accent?16:0,borderLeft:accent?"3px solid "+accent:"none"}}><h2 style={{fontSize:21,fontWeight:600,color:"#F7FAFF",marginBottom:12,fontFamily:FS}}>{t}</h2><div style={{fontSize:14.5,color:"#E5ECFF",lineHeight:1.7,fontFamily:FS}}>{children}</div></div>);
   const Sr = ({children}) => <span style={{color:C.SR,fontWeight:600}}>{children}</span>;
@@ -126,9 +204,9 @@ function DocsPage() {
       <h1 style={{fontSize:32,fontWeight:700,marginBottom:6,color:"#F7FAFF",fontFamily:FS}}>How TrancheFi Works</h1>
       <p style={{color:"#B0B8CC",fontSize:15,marginBottom:40,fontFamily:FS,lineHeight:1.6}}>Structured credit for DeFi — two tranches, one vault, institutional-grade risk separation.</p>
       <S t="The Core Idea"><p style={{margin:"0 0 10px"}}>TrancheFi takes leveraged exposure to Saturn's <B>sUSDat</B> (yield-bearing stablecoin backed by Strategy's STRC digital credit) and splits it into two tranches with fundamentally different risk/return profiles.</p><p style={{margin:"0 0 8px"}}><Sr>Senior</Sr> gets a fixed <Sr>8% net yield</Sr>, paid first. Zero drawdowns by design — <Jr>junior</Jr> absorbs all volatility before <Sr>senior</Sr> principal is touched.</p><p><Jr>Junior</Jr> absorbs all residual yield and price volatility — in exchange for amplified returns in the <Jr>20-25% range</Jr> under normal conditions.</p></S>
-      <S t="Fixed Leverage with Health Factor Protection"><p style={{margin:"0 0 12px"}}>The vault targets <B>fixed 1.75x leverage</B> via looping on Morpho. Tail-risk protection comes from a <B>four-level health factor cascade</B>:</p><p style={{margin:"0 0 6px"}}><B>HF ≥ 2.0:</B> Normal — maintain 1.75x</p><p style={{margin:"0 0 6px"}}><B>HF 1.8–2.0:</B> Freeze increases</p><p style={{margin:"0 0 6px"}}><B>HF 1.6–1.8:</B> Deleverage toward 1.25x</p><p style={{margin:"0 0 6px"}}><B>HF 1.3–1.6:</B> Accelerated deleveraging</p><p style={{margin:"0 0 10px"}}><B>HF {"<"} 1.3:</B> Emergency — force to 1.0x</p><Note>In 32 backtest epochs including two major BTC crashes, the cascade never triggered. Min HF was 1.96. The cascade is insurance for scenarios beyond observed data.</Note></S>
+      <S t="Fixed Leverage with Health Factor Protection"><p style={{margin:"0 0 12px"}}>The vault targets <B>fixed 1.75x leverage</B> via looping on Morpho. Tail-risk protection comes from a <B>four-level health factor cascade</B>:</p><p style={{margin:"0 0 6px"}}><B>HF ≥ 2.0:</B> Normal — maintain 1.75x</p><p style={{margin:"0 0 6px"}}><B>HF 1.8–2.0:</B> Freeze increases</p><p style={{margin:"0 0 6px"}}><B>HF 1.6–1.8:</B> Deleverage toward 1.25x</p><p style={{margin:"0 0 6px"}}><B>HF 1.3–1.6:</B> Accelerated deleveraging</p><p style={{margin:"0 0 10px"}}><B>HF {"<"} 1.3:</B> Emergency — force to 1.0x</p><Note>In 32 epochs including two major BTC crashes, the cascade never triggered. Min HF was 1.96. The cascade is insurance for scenarios beyond observed data.</Note></S>
       <S t="Weekly Waterfall"><p style={{margin:"0 0 8px"}}><Sr>1. Senior coupon</Sr> — 8.5% gross → 8.0% net (8.32% effective APY).</p><p style={{margin:"0 0 8px"}}><B>2. Fees</B> — 0.50% mgmt each tranche. 10% perf on junior yield income only.</p><p style={{margin:"0 0 8px"}}><Jr>3. Junior residual</Jr> — all remaining yield + ALL mark-to-market.</p></S>
-      <S t="Paper Portfolio" accent={C.SR}><p style={{margin:"0 0 8px"}}><B>32 verified backtest epochs</B> (Jul 2025 – Mar 2026) using real STRC prices. Fixed 1.75x leverage. $1M simulated TVL.</p><Note>Backtest returns include STRC's one-time IPO discount recovery (~$93.74 → $100). Forward junior APY reflects ongoing income only.</Note></S>
+      <S t="Paper Portfolio" accent={C.SR}><p style={{margin:"0 0 8px"}}><B>32+ epochs</B> using real STRC prices. Fixed 1.75x leverage. $1M simulated TVL. No real capital deployed.</p><Note>Returns include STRC's one-time IPO discount recovery (~$93.74 → $100). Forward junior APY reflects ongoing income only.</Note></S>
       <div style={{marginTop:44,padding:20,background:"rgba(91,156,245,0.06)",border:"1px solid rgba(91,156,245,0.12)",borderRadius:10}}>
         <div style={{fontSize:12,fontWeight:600,color:C.SR,marginBottom:12,fontFamily:F}}>Protocol Parameters — Whitepaper v6</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 40px",fontSize:11.5,color:"#B0B8CC",fontFamily:F}}>
@@ -142,26 +220,85 @@ function DocsPage() {
 export default function App() {
   const [btc, setBtc] = useState(null);
   const [strc, setStrc] = useState(null);
+  const [mstr, setMstr] = useState(null);
+  const [prevStrc, setPrevStrc] = useState(null);
   const [liveEps, setLiveEps] = useState([]);
   const [tab, setTab] = useState("dashboard");
-  useEffect(() => { const f = async () => { try { const r = await fetch("/api/prices"); if (r.ok) { const d = await r.json(); if (d.btcPrice) setBtc(d.btcPrice); if (d.strcPrice) setStrc(d.strcPrice); return; } } catch {} try { const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"); const d = await r.json(); if (d?.bitcoin?.usd) setBtc(d.bitcoin.usd); } catch {} }; f(); const iv = setInterval(f, 15000); return () => clearInterval(iv); }, []);
+
+  // Price feeds — 10 second interval
+  useEffect(() => {
+    const f = async () => {
+      try {
+        const r = await fetch("/api/prices");
+        if (r.ok) {
+          const d = await r.json();
+          if (d.btcPrice) setBtc(d.btcPrice);
+          if (d.strcPrice) { setPrevStrc(prev => prev || d.strcPrice); setStrc(d.strcPrice); }
+          if (d.mstrPrice) setMstr(d.mstrPrice);
+          return;
+        }
+      } catch {}
+      try {
+        const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+        const d = await r.json();
+        if (d?.bitcoin?.usd) setBtc(d.bitcoin.usd);
+      } catch {}
+    };
+    f(); const iv = setInterval(f, 10000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Forward sim
   useEffect(() => { if (!btc) return; const last = BT[BT.length-1]; const ms = Date.now()-new Date(last.date).getTime(); const wks = Math.floor(ms/(7*864e5)); const eps = []; let prev = {...last}; for (let i=0;i<wks;i++) { const prog=(i+1)/Math.max(wks,1); const b = (last.btc||btc)+(btc-(last.btc||btc))*prog; const s = strc?(i===wks-1?strc:last.strc+(strc-last.strc)*prog):null; eps.push(simEpoch(prev,b,s)); prev=eps[eps.length-1]; } setLiveEps(eps); }, [btc,strc]);
+
   const all = useMemo(() => [...BT,...liveEps], [liveEps]);
   const lastEpoch = all[all.length-1];
-  const first = all[0];
   const currentStrc = strc || lastEpoch.strc;
   const strcRet = (currentStrc - lastEpoch.strc) / lastEpoch.strc;
-  const latest = {...lastEpoch, strc: currentStrc, btc: btc||lastEpoch.btc};
-  const tvl = latest.sr + latest.jr;
+  const tvl = lastEpoch.sr + lastEpoch.jr;
   const poolApy = P.LEV*P.SUSDAT - (P.LEV-1)*P.BORROW;
   const jrGrossApy = (poolApy - P.SR_GROSS*0.70) / 0.30;
   const jrNetApy = jrGrossApy>0 ? jrGrossApy*(1-P.JR_PERF)-P.JR_MGMT : jrGrossApy-P.JR_MGMT;
   const hf = computeHF(P.LEV, strcRet);
   const srSP = lastEpoch.srSP||100, jrSP = lastEpoch.jrSP||100;
+
+  // Compute trailing vols from epoch data
+  const strcPrices = all.map(s => s.strc);
+  const strcReturns = strcPrices.slice(1).map((p,i) => (p - strcPrices[i]) / strcPrices[i]);
+  const strcVol = strcReturns.length > 1 ? Math.sqrt(strcReturns.reduce((s,r) => s + r*r, 0) / strcReturns.length) * Math.sqrt(52) * 100 : 15;
+  const jrPrices = all.map(s => s.jrSP || 100);
+  const jrReturns = jrPrices.slice(1).map((p,i) => (p - jrPrices[i]) / jrPrices[i]);
+  const jrVol = jrReturns.length > 1 ? Math.sqrt(jrReturns.reduce((s,r) => s + r*r, 0) / jrReturns.length) * Math.sqrt(52) * 100 : 53;
+  const srVol = 0.5; // senior is effectively zero vol
+
+  // Max drawdown + recovery
+  let jrMaxDD = 0, jrPeak = 100, jrDDStart = 0, jrRecovery = 0;
+  let inDD = false, ddStartIdx = 0;
+  all.forEach((s, i) => {
+    const p = s.jrSP || 100;
+    if (p > jrPeak) { jrPeak = p; if (inDD) { jrRecovery = i - ddStartIdx; inDD = false; } }
+    const dd = (p - jrPeak) / jrPeak * 100;
+    if (dd < jrMaxDD) { jrMaxDD = dd; if (!inDD) { inDD = true; ddStartIdx = i; } }
+  });
+
+  // Sharpe & Sortino (weekly returns, annualized)
+  const negWeeks = jrReturns.filter(r => r < 0).length;
+  const posWeeks = jrReturns.filter(r => r >= 0).length;
+  const meanWk = jrReturns.length > 0 ? jrReturns.reduce((a,b) => a+b, 0) / jrReturns.length : 0;
+  const stdWk = jrReturns.length > 1 ? Math.sqrt(jrReturns.reduce((s,r) => s + (r-meanWk)**2, 0) / (jrReturns.length-1)) : 1;
+  const downReturns = jrReturns.filter(r => r < 0);
+  const downDev = downReturns.length > 1 ? Math.sqrt(downReturns.reduce((s,r) => s + r*r, 0) / downReturns.length) : stdWk;
+  const sharpe = stdWk > 0 ? (meanWk / stdWk) * Math.sqrt(52) : 0;
+  const sortino = downDev > 0 ? (meanWk / downDev) * Math.sqrt(52) : 0;
+
+  // Daily returns (intraday STRC move → leveraged impact)
+  const dailyStrcRet = prevStrc && strc ? (strc - prevStrc) / prevStrc : 0;
+  const dailySrRet = P.SR_NET / 365 * 100; // tiny daily coupon accrual
+  const dailyJrRet = dailyStrcRet * P.LEV * (1/0.30) * 100; // leveraged amplified impact on junior
+
   const cd = all.map(s => ({label:s.date.slice(2,10).replace(/-/g,"/"), srP:+(s.srSP||100).toFixed(2), jrP:+(s.jrSP||100).toFixed(2), hf:s.hf||2.01}));
   const mm = {}; all.forEach(s => {const m=s.date.slice(0,7); if(!mm[m])mm[m]={o:s}; mm[m].c=s;});
-  const monthly = Object.entries(mm).map(([m,{o,c}]) => ({month:m, srR:((c.srSP||100)-(o.srSP||100))/(o.srSP||100)*100, jrR:((c.jrSP||100)-(o.jrSP||100))/(o.jrSP||100)*100, hf:c.hf||2.01, live:c.live}));
-  const wf = (()=>{const pw=P.LEV*(P.SUSDAT/P.WK)-(P.LEV-1)*(P.BORROW/P.WK);const sc=P.SR_GROSS*0.70/P.WK;const mg=(P.SR_MGMT*0.70+P.JR_MGMT*0.30)/P.WK;const res=pw-sc-mg;const pff=res>0?res*P.JR_PERF:0;return{pw,sc,mg,pf:pff,jr:res-pff};})();
+  const monthly = Object.entries(mm).map(([m,{o,c}]) => ({month:m, srR:((c.srSP||100)-(o.srSP||100))/(o.srSP||100)*100, jrR:((c.jrSP||100)-(o.jrSP||100))/(o.jrSP||100)*100, hf:c.hf||2.01}));
   const intv = Math.max(1,Math.floor(cd.length/10));
 
   return (
@@ -176,21 +313,27 @@ export default function App() {
         <div style={{display:"flex",alignItems:"center",gap:12,fontSize:11,fontFamily:F}}>
           {btc&&<span style={{color:"#f97316",fontWeight:600}}>BTC ${btc.toLocaleString()}</span>}
           {strc&&<span style={{color:C.SR,fontWeight:600}}>STRC ${strc.toFixed(2)}</span>}
-          <span style={{width:6,height:6,borderRadius:3,background:strc?C.SAFE:"#fbbf24",display:"inline-block",animation:strc?"pulse 2s infinite":"none"}}/>
-          <span style={{color:strc?C.SAFE:"#E5ECFF",fontWeight:strc?600:400}}>{strc?"LIVE":"BACKTEST"}</span>
+          {mstr&&<span style={{color:"#a78bfa",fontWeight:600}}>MSTR ${mstr.toFixed(0)}</span>}
+          <span style={{width:6,height:6,borderRadius:3,background:C.SAFE,display:"inline-block",animation:"pulse 2s infinite"}}/>
         </div>
       </div>
       {tab==="docs"?<DocsPage/>:<>
-        <div style={{background:"rgba(251,191,36,0.04)",borderBottom:"1px solid rgba(251,191,36,0.08)",padding:"6px 24px",fontSize:10.5,color:"rgba(251,191,36,0.7)",fontFamily:F}}>◆ {BT.length} backtest{liveEps.length>0?" + "+liveEps.length+" live":""} epochs • Fixed 1.75x leverage • $1M simulated TVL • No real capital deployed</div>
+        <div style={{background:"rgba(251,191,36,0.04)",borderBottom:"1px solid rgba(251,191,36,0.08)",padding:"6px 24px",fontSize:10.5,color:"rgba(251,191,36,0.7)",fontFamily:F}}>◆ {all.length} epochs • Fixed 1.75x leverage • $1M simulated TVL • Paper portfolio — no real capital deployed</div>
         <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 20px 40px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:20,animation:"slideUp 0.4s ease-out"}}>
-            <Kpi label="Total TVL" value={$f(tvl)} sub="Simulated $1M start" pulse={!!strc}/>
-            <Kpi label="sdcSENIOR" value={"$"+srSP.toFixed(2)} sub={"8.00% APY • +"+((srSP-100)).toFixed(1)+"%"} color={C.SR}/>
-            <Kpi label="sdcJUNIOR" value={"$"+jrSP.toFixed(2)} sub={(jrNetApy*100).toFixed(0)+"% fwd APY • "+(jrSP>=100?"+":"")+(jrSP-100).toFixed(1)+"%"} color={C.JR} pulse={!!strc}/>
+          {/* KPIs — removed leverage (fixed), removed inception from cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:16,animation:"slideUp 0.4s ease-out"}}>
+            <Kpi label="Total TVL" value={$f(tvl)} sub="Simulated $1M start" pulse/>
+            <Kpi label="sdcSENIOR" value={"$"+srSP.toFixed(2)} sub="8.0% APY" color={C.SR}/>
+            <Kpi label="sdcJUNIOR" value={"$"+jrSP.toFixed(2)} sub={(jrNetApy*100).toFixed(0)+"% APY"} color={C.JR} pulse/>
             <Kpi label="Pool Yield" value={(poolApy*100).toFixed(1)+"%"} sub="Gross leveraged APY" color={C.SAFE}/>
-            <Kpi label="Leverage" value={P.LEV.toFixed(2)+"x"} sub="Fixed target"/>
-            <Kpi label="Health Factor" value={hf.toFixed(2)} sub={hf>=2.0?"Normal":hf>=1.8?"Watch":hf>=1.6?"Deleverage":"Critical"} color={hf>=1.8?C.SAFE:hf>=1.6?C.WARN:C.DANGER}/>
+            <Kpi label="Health Factor" value={hf.toFixed(2)} sub={hf>=2.0?"Normal":hf>=1.8?"Watch":"Deleverage"} color={hf>=1.8?C.SAFE:hf>=1.6?C.WARN:C.DANGER}/>
+            <Kpi label="Max Drawdown" value={jrMaxDD.toFixed(1)+"%"} sub="Junior worst peak-to-trough" color={C.DANGER}/>
           </div>
+
+          {/* RETURNS BAR */}
+          <ReturnsBar all={all} dailySrRet={dailySrRet} dailyJrRet={dailyJrRet}/>
+
+          {/* MAIN CHART */}
           <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:"18px 18px 10px",marginBottom:16}}>
             <SectionLabel>Tranche Share Price — $100 invested at inception</SectionLabel>
             <ResponsiveContainer width="100%" height={270}>
@@ -201,13 +344,14 @@ export default function App() {
                 <YAxis tick={{fontSize:9,fill:"#B0B8CC"}} domain={["dataMin-3","dataMax+5"]} tickFormatter={v=>"$"+Number(v).toFixed(0)} yAxisId="p"/>
                 <Tooltip content={<ChartTip/>}/>
                 <ReferenceLine yAxisId="p" y={100} stroke="rgba(148,163,184,0.08)" strokeDasharray="4 4"/>
-                {liveEps.length>0&&<ReferenceLine yAxisId="p" x={BT[BT.length-1].date.slice(2,10).replace(/-/g,"/")} stroke="rgba(251,191,36,0.25)" strokeDasharray="6 3" label={{value:"LIVE →",position:"top",fontSize:8,fill:"rgba(251,191,36,0.5)"}}/>}
                 <Area yAxisId="p" type="monotone" dataKey="srP" name="Senior" stroke={C.SR} strokeWidth={2} fill="url(#gs)" dot={false} activeDot={{r:3,fill:C.SR}}/>
                 <Area yAxisId="p" type="monotone" dataKey="jrP" name="Junior" stroke={C.JR} strokeWidth={2} fill="url(#gj)" dot={false} activeDot={{r:3,fill:C.JR}}/>
               </AreaChart>
             </ResponsiveContainer>
-            <div style={{display:"flex",gap:24,justifyContent:"center",padding:"6px 0",fontSize:11,fontFamily:F}}><span style={{color:C.SR}}>● Senior (8% fixed)</span><span style={{color:C.JR}}>● Junior (variable)</span>{liveEps.length>0&&<span style={{color:"rgba(251,191,36,0.6)"}}>│ Live from epoch {BT.length+1}</span>}</div>
+            <div style={{display:"flex",gap:24,justifyContent:"center",padding:"6px 0",fontSize:11,fontFamily:F}}><span style={{color:C.SR}}>● Senior (8% fixed)</span><span style={{color:C.JR}}>● Junior (variable)</span></div>
           </div>
+
+          {/* ROW 2: HF CHART + VOLATILITY FLOW */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
             <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:"18px 18px 10px"}}>
               <SectionLabel>Health Factor — 1.75x fixed leverage</SectionLabel>
@@ -223,23 +367,36 @@ export default function App() {
                 </AreaChart>
               </ResponsiveContainer>
               <div style={{textAlign:"center",fontSize:9,color:"#CBD5E8",fontFamily:F,padding:"4px 0 0"}}>Min HF: 1.96 (Nov 21) • Cascade never triggered</div>
-            </div>
-            <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:18}}>
-              <SectionLabel>Weekly Waterfall</SectionLabel>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {[{l:"Pool yield (1.75x sUSDat - borrow)",v:wf.pw,c:"#818cf8"},{l:"→ Senior coupon",v:wf.sc,c:C.SR},{l:"→ Mgmt fees",v:wf.mg,c:"#fbbf24"},{l:"→ Perf fee (10% yield)",v:wf.pf,c:"#f87171"},{l:"→ Junior residual",v:wf.jr,c:C.JR}].map((r,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:200,fontSize:10,color:"#E5ECFF",fontFamily:F,flexShrink:0}}>{r.l}</div>
-                    <div style={{flex:1,height:16,background:"rgba(148,163,184,0.03)",borderRadius:3,overflow:"hidden"}}><div style={{width:Math.max(3,r.v/wf.pw*100)+"%",height:"100%",background:r.c,opacity:0.4,borderRadius:3}}/></div>
-                    <div style={{width:62,fontSize:11,color:r.c,fontFamily:F,textAlign:"right",flexShrink:0,fontWeight:500}}>{(r.v*100).toFixed(2)}%</div>
-                  </div>
-                ))}
+              {/* COMPACT STATS */}
+              <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid "+C.BD}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:10.5,fontFamily:F}}>
+                  {[
+                    ["Sharpe", sharpe.toFixed(2), C.T],
+                    ["Sortino", sortino.toFixed(2), C.T],
+                    ["Jr Volatility", jrVol.toFixed(1)+"%", C.WARN],
+                    ["Sr Volatility", srVol.toFixed(1)+"%", C.SAFE],
+                    ["Positive Weeks", posWeeks+"/"+all.length, C.SAFE],
+                    ["Negative Weeks", negWeeks+"/"+all.length, negWeeks > posWeeks ? C.DANGER : C.WARN],
+                    ["Max Drawdown", jrMaxDD.toFixed(1)+"%", C.DANGER],
+                    ["Recovery", (jrRecovery||"3-6")+" wks", C.T],
+                  ].map(([k,v,c],i) => (
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
+                      <span style={{color:"#8B93A7"}}>{k}</span>
+                      <span style={{color:c,fontWeight:600}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* VOLATILITY FLOW replaces waterfall */}
+            <VolFlow btcPrice={btc} strcPrice={strc||lastEpoch.strc} mstrPrice={mstr} srVol={srVol} jrVol={jrVol} strcVol={strcVol}/>
           </div>
+
+          {/* MONTHLY TABLE */}
           <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:18}}>
             <SectionLabel>Monthly Performance</SectionLabel>
-            <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:F}}><thead><tr style={{borderBottom:"1px solid rgba(148,163,184,0.08)"}}>{["Month","Senior","Junior","Health Factor",""].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:h==="Month"?"left":"right",color:"#E5ECFF",fontWeight:500,fontSize:9.5}}>{h}</th>))}</tr></thead><tbody>{monthly.map((m,i)=>(<tr key={i} style={{borderBottom:"1px solid "+C.BD,background:m.live?"rgba(251,191,36,0.02)":"transparent"}}><td style={{padding:"7px 12px",color:"#E5ECFF"}}>{m.month}</td><td style={{padding:"7px 12px",textAlign:"right",color:C.SR,fontWeight:500}}>{pf(m.srR)}</td><td style={{padding:"7px 12px",textAlign:"right",color:m.jrR>=0?C.JR:C.DANGER,fontWeight:500}}>{pf(m.jrR)}</td><td style={{padding:"7px 12px",textAlign:"right",color:m.hf>=1.8?C.SAFE:C.WARN}}>{m.hf.toFixed(2)}</td><td style={{padding:"7px 12px",textAlign:"right",fontSize:9,color:"#CBD5E8"}}>{m.live?"live":"backtest"}</td></tr>))}</tbody></table></div>
+            <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:F}}><thead><tr style={{borderBottom:"1px solid rgba(148,163,184,0.08)"}}>{["Month","Senior","Junior","Health Factor"].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:h==="Month"?"left":"right",color:"#E5ECFF",fontWeight:500,fontSize:9.5}}>{h}</th>))}</tr></thead><tbody>{monthly.map((m,i)=>(<tr key={i} style={{borderBottom:"1px solid "+C.BD}}><td style={{padding:"7px 12px",color:"#E5ECFF"}}>{m.month}</td><td style={{padding:"7px 12px",textAlign:"right",color:C.SR,fontWeight:500}}>{pf(m.srR)}</td><td style={{padding:"7px 12px",textAlign:"right",color:m.jrR>=0?C.JR:C.DANGER,fontWeight:500}}>{pf(m.jrR)}</td><td style={{padding:"7px 12px",textAlign:"right",color:m.hf>=1.8?C.SAFE:C.WARN}}>{m.hf.toFixed(2)}</td></tr>))}</tbody></table></div>
           </div>
           <div style={{textAlign:"center",padding:"28px 0 12px",fontSize:9.5,color:"rgba(148,163,184,0.15)",fontFamily:F,letterSpacing:"0.1em"}}>TRANCHEFI • STRUCTURED CREDIT FOR DEFI</div>
         </div>

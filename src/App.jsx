@@ -141,53 +141,64 @@ function ReturnsBar({all, dailySrRet, dailyJrRet}) {
   );
 }
 
-// === VOLATILITY FLOW — Conservation of Volatility live diagram ===
+// === VOLATILITY ENGINE — BTC powers the stack, vol redistributed at each layer ===
 function VolFlow({btcPrice, strcPrice, mstrPrice, srVol, jrVol, strcVol}) {
-  const Node = ({label, price, vol, color, width, sub}) => (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:width||"auto"}}>
-      <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid "+C.BD,borderRadius:10,padding:"12px 18px",textAlign:"center",minWidth:130,position:"relative"}}>
-        <div style={{fontSize:10,color:color||"#E5ECFF",fontWeight:600,letterSpacing:"0.06em",marginBottom:4,fontFamily:F}}>{label}</div>
-        <div style={{fontSize:18,fontWeight:700,color:"#F7FAFF",fontFamily:F,letterSpacing:"-0.02em"}}>{price}</div>
-        {vol !== undefined && <div style={{fontSize:10,color:vol > 30 ? C.DANGER : vol > 10 ? C.WARN : C.SAFE,fontFamily:F,marginTop:3,fontWeight:500}}>{vol.toFixed(1)}% vol</div>}
-        {sub && <div style={{fontSize:9,color:"#8B93A7",fontFamily:F,marginTop:2}}>{sub}</div>}
+  const maxVol = 85;
+  const VolBar = ({width}) => (
+    <div style={{width:"100%",height:3,background:"rgba(148,163,184,0.06)",borderRadius:2,overflow:"hidden",margin:"4px 0"}}>
+      <div style={{width:width+"%",height:"100%",borderRadius:2,background:`linear-gradient(90deg, rgba(52,211,153,0.6), rgba(251,191,36,0.6) 40%, rgba(248,113,113,0.8))`,opacity:0.5+width/200}}/>
+    </div>
+  );
+  const Layer = ({label, price, vol, color, sub, glow}) => (
+    <div style={{padding:"10px 14px",background:glow?"rgba(249,115,22,0.04)":"rgba(255,255,255,0.015)",border:"1px solid "+(glow?"rgba(249,115,22,0.12)":C.BD),borderRadius:8,position:"relative"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+        <span style={{fontSize:11,color:color,fontWeight:700,fontFamily:F,letterSpacing:"0.04em"}}>{label}</span>
+        <span style={{fontSize:13,fontWeight:700,color:"#F7FAFF",fontFamily:F}}>{price}</span>
+      </div>
+      <VolBar width={Math.min(100, (vol/maxVol)*100)}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:8.5,color:"#8B93A7",fontFamily:F}}>{sub}</span>
+        <span style={{fontSize:10,color:vol>30?C.DANGER:vol>10?C.WARN:C.SAFE,fontWeight:600,fontFamily:F}}>{vol.toFixed(1)}% vol</span>
       </div>
     </div>
   );
-  const Arrow = ({label}) => (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 0"}}>
-      <div style={{width:1,height:16,background:"rgba(148,163,184,0.15)"}}/>
-      {label && <div style={{fontSize:8,color:"#8B93A7",fontFamily:F,padding:"2px 6px",background:"rgba(148,163,184,0.05)",borderRadius:3}}>{label}</div>}
-      <div style={{width:1,height:16,background:"rgba(148,163,184,0.15)"}}/>
+  const Connector = ({label}) => (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"2px 0",gap:6}}>
+      <div style={{width:1,height:14,background:"linear-gradient(180deg,rgba(249,115,22,0.3),rgba(148,163,184,0.1))"}}/>
+      {label&&<span style={{fontSize:7.5,color:"#6B7280",fontFamily:F,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>}
+      <div style={{width:1,height:14,background:"linear-gradient(180deg,rgba(148,163,184,0.1),rgba(91,156,245,0.2))"}}/>
     </div>
   );
-  const Fork = ({children}) => (
-    <div style={{display:"flex",gap:20,justifyContent:"center",position:"relative"}}>
-      <div style={{position:"absolute",top:0,left:"50%",width:1,height:12,background:"rgba(148,163,184,0.15)",transform:"translateX(-50%)"}}/>
-      <div style={{position:"absolute",top:12,left:"calc(50% - 80px)",width:160,height:1,background:"rgba(148,163,184,0.12)"}}/>
-      <div style={{paddingTop:12}}>{children}</div>
+  const Split = () => (
+    <div style={{display:"flex",justifyContent:"center",padding:"2px 0"}}>
+      <svg width="120" height="18" viewBox="0 0 120 18" style={{opacity:0.3}}>
+        <path d="M60 0 L60 6 L20 18" stroke="#5b9cf5" strokeWidth="1" fill="none"/>
+        <path d="M60 0 L60 6 L100 18" stroke="#ef8b3a" strokeWidth="1" fill="none"/>
+      </svg>
     </div>
   );
 
   return (
     <div style={{background:C.CARD,border:"1px solid "+C.BD,borderRadius:10,padding:18}}>
-      <SectionLabel>Conservation of Volatility — Live</SectionLabel>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:0,padding:"8px 0"}}>
-        <Node label="BITCOIN" price={"$"+(btcPrice?btcPrice.toLocaleString():"--")} vol={45} color="#f97316" sub="Digital capital"/>
-        <Arrow label="Capital structure"/>
-        <div style={{display:"flex",gap:24,justifyContent:"center"}}>
-          <Node label="MSTR" price={mstrPrice?"$"+mstrPrice.toFixed(0):"--"} vol={80} color="#a78bfa" sub="Equity (absorbs vol)"/>
-          <Node label="STRC" price={"$"+(strcPrice?strcPrice.toFixed(2):"--")} vol={strcVol} color={C.SR} sub="Credit (strips vol)"/>
+      <SectionLabel>Volatility Engine — Conservation of Energy</SectionLabel>
+      <div style={{display:"flex",flexDirection:"column",gap:0}}>
+        <Layer label="BTC" price={btcPrice?"$"+btcPrice.toLocaleString():"--"} vol={45} color="#f97316" sub="Digital capital" glow/>
+        <Connector label="capital structure"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <Layer label="MSTR" price={mstrPrice?"$"+mstrPrice.toFixed(0):"--"} vol={80} color="#a78bfa" sub="Absorbs volatility"/>
+          <Layer label="STRC" price={strcPrice?"$"+strcPrice.toFixed(2):"--"} vol={strcVol} color={C.SR} sub="Strips volatility"/>
         </div>
-        <Arrow label="Saturn Protocol"/>
-        <Node label="sUSDat" price="10.35% yield" vol={strcVol} color={C.SAFE} sub="Programmable credit"/>
-        <Arrow label="TrancheFi vault (1.75x)"/>
-        <div style={{display:"flex",gap:24,justifyContent:"center"}}>
-          <Node label="sdcSENIOR" price="8% APY" vol={srVol} color={C.SR} sub="Stability"/>
-          <Node label="sdcJUNIOR" price={(jrVol > 0 ? "20" : "--")+"% APY"} vol={jrVol} color={C.JR} sub="Amplified yield"/>
+        <Connector label="saturn protocol"/>
+        <Layer label="sUSDat" price="10.35% yield" vol={strcVol} color={C.SAFE} sub="Programmable credit"/>
+        <Connector label="tranchefi · 1.75x"/>
+        <Split/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <Layer label="sdcSENIOR" price="8% APY" vol={srVol} color={C.SR} sub="Near-zero volatility"/>
+          <Layer label="sdcJUNIOR" price="20%+ APY" vol={jrVol} color={C.JR} sub="Amplified returns"/>
         </div>
       </div>
-      <div style={{textAlign:"center",fontSize:9,color:"#8B93A7",fontFamily:F,marginTop:10}}>
-        Volatility is never destroyed — only redistributed. BTC's energy flows through each layer.
+      <div style={{textAlign:"center",fontSize:8.5,color:"#6B7280",fontFamily:F,marginTop:10,fontStyle:"italic"}}>
+        Volatility is never destroyed — only redistributed down the stack
       </div>
     </div>
   );
@@ -244,7 +255,17 @@ export default function App() {
         if (d?.bitcoin?.usd) setBtc(d.bitcoin.usd);
       } catch {}
     };
-    f(); const iv = setInterval(f, 10000);
+    // Separate MSTR fetch if not provided by /api/prices
+    const fetchMstr = async () => {
+      if (mstr) return; // already have it
+      try {
+        const r = await fetch("/api/prices");
+        if (r.ok) { const d = await r.json(); if (d.mstrPrice) { setMstr(d.mstrPrice); return; } }
+      } catch {}
+      // If API doesn't provide MSTR, leave null — will show "--"
+    };
+    f(); fetchMstr();
+    const iv = setInterval(f, 10000);
     return () => clearInterval(iv);
   }, []);
 
@@ -327,7 +348,6 @@ export default function App() {
             <Kpi label="sdcJUNIOR" value={"$"+jrSP.toFixed(2)} sub={(jrNetApy*100).toFixed(0)+"% APY"} color={C.JR} pulse/>
             <Kpi label="Pool Yield" value={(poolApy*100).toFixed(1)+"%"} sub="Gross leveraged APY" color={C.SAFE}/>
             <Kpi label="Health Factor" value={hf.toFixed(2)} sub={hf>=2.0?"Normal":hf>=1.8?"Watch":"Deleverage"} color={hf>=1.8?C.SAFE:hf>=1.6?C.WARN:C.DANGER}/>
-            <Kpi label="Max Drawdown" value={jrMaxDD.toFixed(1)+"%"} sub="Junior worst peak-to-trough" color={C.DANGER}/>
           </div>
 
           {/* RETURNS BAR */}
@@ -371,14 +391,12 @@ export default function App() {
               <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid "+C.BD}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:10.5,fontFamily:F}}>
                   {[
-                    ["Sharpe", sharpe.toFixed(2), C.T],
-                    ["Sortino", sortino.toFixed(2), C.T],
+                    ["Jr Sharpe", sharpe.toFixed(2), C.T],
+                    ["Jr Sortino", sortino.toFixed(2), C.T],
                     ["Jr Volatility", jrVol.toFixed(1)+"%", C.WARN],
                     ["Sr Volatility", srVol.toFixed(1)+"%", C.SAFE],
-                    ["Positive Weeks", posWeeks+"/"+all.length, C.SAFE],
-                    ["Negative Weeks", negWeeks+"/"+all.length, negWeeks > posWeeks ? C.DANGER : C.WARN],
-                    ["Max Drawdown", jrMaxDD.toFixed(1)+"%", C.DANGER],
-                    ["Recovery", (jrRecovery||"3-6")+" wks", C.T],
+                    ["Jr Max DD", jrMaxDD.toFixed(1)+"%", C.DANGER],
+                    ["DD Recovery", (jrRecovery||"3-6")+" wks", C.T],
                   ].map(([k,v,c],i) => (
                     <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
                       <span style={{color:"#8B93A7"}}>{k}</span>

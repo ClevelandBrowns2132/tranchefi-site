@@ -231,6 +231,7 @@ function DocsPage() {
 export default function App() {
   const [btc, setBtc] = useState(null);
   const [strc, setStrc] = useState(null);
+  const [strcPrevClose, setStrcPrevClose] = useState(null);
   const [mstr, setMstr] = useState(null);
   const [liveEps, setLiveEps] = useState([]);
   const [tab, setTab] = useState("dashboard");
@@ -244,6 +245,7 @@ export default function App() {
           const d = await r.json();
           if (d.btcPrice) setBtc(d.btcPrice);
           if (d.strcPrice) { setStrc(d.strcPrice); }
+          if (d.strcPrevClose) { setStrcPrevClose(d.strcPrevClose); }
           if (d.mstrPrice) setMstr(d.mstrPrice);
           return;
         }
@@ -311,9 +313,9 @@ export default function App() {
   const sharpe = stdWk > 0 ? (meanWk / stdWk) * Math.sqrt(52) : 0;
   const sortino = downDev > 0 ? (meanWk / downDev) * Math.sqrt(52) : 0;
 
-  // Daily returns — STRC price move + yield accrual
-  const lastEpochStrc = lastEpoch.strc;
-  const dailyStrcRet = strc && lastEpochStrc ? (strc - lastEpochStrc) / lastEpochStrc : 0;
+  // Daily returns — true 1D using yesterday's close from API
+  const dailyAnchor = strcPrevClose || BT[BT.length - 1].strc;
+  const dailyStrcRet = strc && dailyAnchor ? (strc - dailyAnchor) / dailyAnchor : 0;
   // Senior daily: coupon accrual
   const dailySrRet = P.SR_NET / 365 * 100;
   // Junior daily: leveraged MTM + yield accrual (pool yield minus senior claim, on junior capital)

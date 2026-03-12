@@ -311,11 +311,15 @@ export default function App() {
   const sharpe = stdWk > 0 ? (meanWk / stdWk) * Math.sqrt(52) : 0;
   const sortino = downDev > 0 ? (meanWk / downDev) * Math.sqrt(52) : 0;
 
-  // Daily returns — STRC change from last epoch to current live price
+  // Daily returns — STRC price move + yield accrual
   const lastEpochStrc = lastEpoch.strc;
   const dailyStrcRet = strc && lastEpochStrc ? (strc - lastEpochStrc) / lastEpochStrc : 0;
-  const dailySrRet = P.SR_NET / 365 * 100; // tiny daily coupon accrual
-  const dailyJrRet = dailyStrcRet * P.LEV * (1 / 0.30) * 100; // leveraged junior impact
+  // Senior daily: coupon accrual
+  const dailySrRet = P.SR_NET / 365 * 100;
+  // Junior daily: leveraged MTM + yield accrual (pool yield minus senior claim, on junior capital)
+  const dailyJrYield = ((P.LEV * P.SUSDAT - (P.LEV - 1) * P.BORROW) - P.SR_GROSS * 0.70) / 0.30 / 365 * 100;
+  const dailyJrMTM = dailyStrcRet * P.LEV * (1 / 0.30) * 100;
+  const dailyJrRet = dailyJrYield + dailyJrMTM;
 
   const cd = all.map(s => ({label:s.date.slice(2,10).replace(/-/g,"/"), srP:+(s.srSP||100).toFixed(2), jrP:+(s.jrSP||100).toFixed(2), hf:s.hf||2.01}));
   const mm = {}; all.forEach(s => {const m=s.date.slice(0,7); if(!mm[m])mm[m]={o:s}; mm[m].c=s;});

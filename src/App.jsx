@@ -232,7 +232,6 @@ export default function App() {
   const [btc, setBtc] = useState(null);
   const [strc, setStrc] = useState(null);
   const [mstr, setMstr] = useState(null);
-  const [prevStrc, setPrevStrc] = useState(null);
   const [liveEps, setLiveEps] = useState([]);
   const [tab, setTab] = useState("dashboard");
 
@@ -244,7 +243,7 @@ export default function App() {
         if (r.ok) {
           const d = await r.json();
           if (d.btcPrice) setBtc(d.btcPrice);
-          if (d.strcPrice) { setPrevStrc(prev => prev || d.strcPrice); setStrc(d.strcPrice); }
+          if (d.strcPrice) { setStrc(d.strcPrice); }
           if (d.mstrPrice) setMstr(d.mstrPrice);
           return;
         }
@@ -312,10 +311,11 @@ export default function App() {
   const sharpe = stdWk > 0 ? (meanWk / stdWk) * Math.sqrt(52) : 0;
   const sortino = downDev > 0 ? (meanWk / downDev) * Math.sqrt(52) : 0;
 
-  // Daily returns (intraday STRC move → leveraged impact)
-  const dailyStrcRet = prevStrc && strc ? (strc - prevStrc) / prevStrc : 0;
+  // Daily returns — STRC change from last epoch to current live price
+  const lastEpochStrc = lastEpoch.strc;
+  const dailyStrcRet = strc && lastEpochStrc ? (strc - lastEpochStrc) / lastEpochStrc : 0;
   const dailySrRet = P.SR_NET / 365 * 100; // tiny daily coupon accrual
-  const dailyJrRet = dailyStrcRet * P.LEV * (1/0.30) * 100; // leveraged amplified impact on junior
+  const dailyJrRet = dailyStrcRet * P.LEV * (1 / 0.30) * 100; // leveraged junior impact
 
   const cd = all.map(s => ({label:s.date.slice(2,10).replace(/-/g,"/"), srP:+(s.srSP||100).toFixed(2), jrP:+(s.jrSP||100).toFixed(2), hf:s.hf||2.01}));
   const mm = {}; all.forEach(s => {const m=s.date.slice(0,7); if(!mm[m])mm[m]={o:s}; mm[m].c=s;});
